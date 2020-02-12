@@ -1,0 +1,8 @@
+# environment
+.*/*
+!.idea/dictionaries/
+
+# make
+out/
+build/
+target/
