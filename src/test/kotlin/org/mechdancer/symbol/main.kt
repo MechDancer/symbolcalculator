@@ -4,12 +4,17 @@ import org.mechdancer.symbol.DExpression.Companion.d
 
 fun main() {
     val x by variable
-    val e = 9 * x * x * x + 7 * x * x + -2
-    val d = d(e) / d(x)
+    val y by variable
+
+    val e = 9 * x * x * y + 7 * x * x + 4 * y + -2
+    val dx = d(e) / d(x)
+    val dy = d(e) / d(y)
+    val d2 = d(dx) / d(y)
 
     println(e)
-    println(d)
+    println(dx)
+    println(dy)
+    println(d2)
 
     println(e.substitute { this[x] = 1 })
-    println(d.substitute { this[x] = 1 })
 }

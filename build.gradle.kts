@@ -5,14 +5,19 @@ plugins {
 }
 
 group = "org.mechdancer"
-version = "0.0.1"
+version = "0.0.2"
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+
+    testImplementation("junit", "junit", "+")
+    testImplementation(kotlin("test-junit"))
+    testImplementation("org.mechdancer", "linearalgebra", "0.2.7-dev-2")
 }
 
 tasks {
