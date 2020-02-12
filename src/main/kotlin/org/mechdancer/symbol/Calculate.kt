@@ -1,6 +1,8 @@
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Multinomial.Companion.multinomial
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
 
 operator fun Expression.plus(others: Expression) =
     multinomial(this, others)
@@ -27,3 +29,22 @@ class ValueCalculator internal constructor(e: Expression) {
 
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
+
+class VariableProperty : ReadOnlyProperty<Any?, Variable> {
+    override fun getValue(thisRef: Any?, property: KProperty<*>) =
+        Variable(property.name)
+}
+
+val variable get() = VariableProperty()
+
+operator fun Number.times(e: Expression) =
+    e * Constant(toDouble())
+
+operator fun Expression.times(n: Number) =
+    this * Constant(n.toDouble())
+
+operator fun Number.plus(e: Expression) =
+    e + Constant(toDouble())
+
+operator fun Expression.plus(n: Number) =
+    this + Constant(n.toDouble())
