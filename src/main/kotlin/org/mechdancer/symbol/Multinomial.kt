@@ -43,7 +43,7 @@ data class Multinomial(val list: List<Expression>) : Expression {
 
         fun multinomial(list: Sequence<Expression>): Expression {
             // 展平并分类项
-            val products = mutableMapOf<Map<Variable, Int>, Double>()
+            val products = mutableMapOf<Map<Variable, Double>, Double>()
             val others = mutableListOf<Expression>()
             var constant = list.flatten(products, others)
             // 转化整理幂式
@@ -70,7 +70,7 @@ data class Multinomial(val list: List<Expression>) : Expression {
         // 从所有级别的表达式中获得各项并分类
         // 修改幂式表，未知项表，返回所有常数的和
         private fun Sequence<Expression>.flatten(
-            products: MutableMap<Map<Variable, Int>, Double>,
+            products: MutableMap<Map<Variable, Double>, Double>,
             others: MutableList<Expression>
         ): Double {
             var c = .0
@@ -79,7 +79,7 @@ data class Multinomial(val list: List<Expression>) : Expression {
                     is Constant    ->
                         c += item.value
                     is Variable    ->
-                        products.compute(mapOf(item to 1))
+                        products.compute(mapOf(item to 1.0))
                         { _, last -> (last ?: .0) + 1 }
                     is Product     ->
                         products.compute(item.map)

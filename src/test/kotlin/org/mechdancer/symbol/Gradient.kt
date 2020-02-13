@@ -40,7 +40,7 @@ fun main() {
 
     var p = vector3DOfZero()
     for (i in 1..1000) {
-        val grad = sample(dx, dy, dz, x, y, z, p) * 5E-5
+        val grad = sample(dx, dy, dz, x, y, z, p) * 6E-5
         if (grad.length < 0.01) break
         p -= grad
         println("迭代次数 = $i")

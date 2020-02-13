@@ -14,8 +14,8 @@ inline class Variable(private val name: String) : Expression {
 
     override fun times(others: Expression) =
         when (others) {
-            is Constant -> product(others.value, mapOf(this to 1))
-            is Variable -> product(1.0, mapOf(this to 1, others to 1))
+            is Constant -> product(others.value, mapOf(this to 1.0))
+            is Variable -> product(1.0, mapOf(this to 1.0, others to 1.0))
             else        -> others * this
         }
 
