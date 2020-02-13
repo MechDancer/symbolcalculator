@@ -1,11 +1,15 @@
 package org.mechdancer.symbol
 
+import kotlin.math.min
 import kotlin.math.pow
 
 /**
  * 幂式
  */
 data class Product(val k: Double, val map: Map<Variable, Int>) : Expression {
+    private val major by lazy { map.values.sum() }
+    private val minor by lazy { map.values.sorted() }
+
     override fun d(v: Variable) =
         when (val changed = map[v]) {
             null -> Constant(.0)
@@ -31,6 +35,24 @@ data class Product(val k: Double, val map: Map<Variable, Int>) : Expression {
                                 compute(v) { _, last -> (last ?: 0) + n }
                         })
             else        -> others * this
+        }
+
+    override fun compareTo(other: Expression) =
+        when (other) {
+            is Constant,
+            is Variable -> +1
+            is Product  -> {
+                major.compareTo(other.major)
+                    .takeIf { it != 0 }
+                ?: run {
+                    (0 until min(minor.size, other.minor.size))
+                        .asSequence()
+                        .map { minor[it].compareTo(other.minor[it]) }
+                        .firstOrNull { it != 0 }
+                    ?: 0
+                }
+            }
+            else        -> -1
         }
 
     override fun toString() =

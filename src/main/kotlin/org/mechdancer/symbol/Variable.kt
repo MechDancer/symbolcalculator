@@ -14,13 +14,17 @@ inline class Variable(private val name: String) : Expression {
 
     override fun times(others: Expression) =
         when (others) {
-            is Constant -> toProduct(others.value)
+            is Constant -> product(others.value, mapOf(this to 1))
             is Variable -> product(1.0, mapOf(this to 1, others to 1))
             else        -> others * this
         }
 
-    fun toProduct(k: Double = 1.0, n: Int = 1) =
-        product(k, mapOf(this to n))
+    override fun compareTo(other: Expression) =
+        when (other) {
+            is Constant -> +1
+            is Variable -> name.compareTo(other.name)
+            else        -> -1
+        }
 
     override fun toString() = name
 }

@@ -18,11 +18,18 @@ data class Multinomial(val list: List<Expression>) : Expression {
         when (others) {
             is Constant,
             is Variable,
-            is Product     -> list.map { it * others }.let(Companion::multinomial)
-            is Multinomial -> multinomial(sequence {
-                for (a in list) for (b in others.list) yield(a * b)
-            })
+            is Product     -> multinomial(list.map { it * others })
+            is Multinomial -> multinomial(sequence { for (a in list) for (b in others.list) yield(a * b) })
             else           -> others * this
+        }
+
+    override fun compareTo(other: Expression) =
+        when (other) {
+            is Constant,
+            is Variable,
+            is Product     -> +1
+            is Multinomial -> 0
+            else           -> -1
         }
 
     override fun toString() = list.joinToString(" + ")

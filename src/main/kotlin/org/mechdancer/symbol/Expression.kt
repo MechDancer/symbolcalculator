@@ -3,7 +3,7 @@ package org.mechdancer.symbol
 /**
  * 可微表达式
  */
-interface Expression {
+interface Expression : Comparable<Expression> {
     /**
      * 对某变量求偏导
      */

@@ -12,5 +12,9 @@ inline class Constant(val value: Double) : Expression {
             else        -> others * this
         }
 
+    override fun compareTo(other: Expression) =
+        if (other is Constant) value.compareTo(other.value)
+        else -1
+
     override fun toString() = value.toString()
 }
