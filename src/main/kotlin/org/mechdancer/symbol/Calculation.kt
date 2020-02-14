@@ -137,7 +137,7 @@ class Sum private constructor(
 
 /** 积式 */
 class Product private constructor(
-    internal val list: List<BasicElement>,
+    internal val list: List<BasicFunction>,
     internal val c: Constant
 ) : Calculation() {
     override val items
@@ -232,7 +232,7 @@ class Product private constructor(
                     c *= e.value
                     null
                 } else
-                    e as BasicElement
+                    e as BasicFunction
             }
             return when {
                 c == .0                        -> Zero

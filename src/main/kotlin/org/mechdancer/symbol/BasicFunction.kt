@@ -2,23 +2,28 @@ package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.One
 import org.mechdancer.symbol.Constant.Companion.Zero
-import kotlin.math.ln
-import kotlin.math.pow
+import org.mechdancer.symbol.Constant.Companion.ln
+import org.mechdancer.symbol.Power.Builders.pow
+import org.mechdancer.symbol.Product.Builders.product
 
-/** 基本初等函数 */
-sealed class BasicElement : Expression
+/**
+ * 基本初等函数
+ *
+ * 基本初等函数都是有且只有一个未知数的函数，互相没有转换关系
+ */
+sealed class BasicFunction(val v: Variable) : Expression
 
 /** 幂函数 */
 class Power private constructor(
-    val v: Variable,
+    v: Variable,
     val c: Constant
-) : BasicElement() {
+) : BasicFunction(v) {
     override fun d(v: Variable) =
-        if (this.v == v) Product.product(c, pow(v, Constant(c.value - 1)))
-        else Constant(.0)
+        if (this.v == v) product(c, pow(v, c - One))
+        else Zero
 
     override fun substitute(v: Variable, c: Constant) =
-        if (this.v == v) Constant(c.value.pow(this.c.value))
+        if (this.v == v) c pow this.c
         else this
 
     override fun equals(other: Any?): Boolean {
@@ -52,14 +57,14 @@ class Power private constructor(
 /** 指数函数 */
 class Exponential private constructor(
     val c: Constant,
-    val v: Variable
-) : BasicElement() {
+    v: Variable
+) : BasicFunction(v) {
     override fun d(v: Variable) =
-        if (this.v == v) Product.product(Constant(ln(c.value)), this)
-        else Constant(.0)
+        if (this.v == v) product(ln(c), this)
+        else Zero
 
     override fun substitute(v: Variable, c: Constant) =
-        if (this.v == v) Constant(this.c.value.pow(c.value))
+        if (this.v == v) this.c pow c
         else this
 
     override fun equals(other: Any?): Boolean {
@@ -90,14 +95,14 @@ class Exponential private constructor(
 /** 对数函数 */
 class Logarithm private constructor(
     val c: Constant,
-    val v: Variable
-) : BasicElement() {
+    v: Variable
+) : BasicFunction(v) {
     override fun d(v: Variable) =
-        if (this.v == v) Product.product(Constant(1 / ln(c.value)), Power.pow(v, Constant(-1.0)))
-        else Constant(.0)
+        if (this.v == v) product(One / ln(c), pow(v, Constant(-1.0)))
+        else Zero
 
     override fun substitute(v: Variable, c: Constant) =
-        if (this.v == v) Constant(kotlin.math.log(c.value, this.c.value))
+        if (this.v == v) Constant.log(this.c, c)
         else this
 
     override fun equals(other: Any?): Boolean {
