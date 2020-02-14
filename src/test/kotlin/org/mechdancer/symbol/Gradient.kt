@@ -3,9 +3,11 @@ package org.mechdancer.symbol
 import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.function.vector.minus
+import org.mechdancer.algebra.function.vector.normalize
 import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
+import kotlin.math.abs
 import kotlin.math.pow
 
 fun main() {
@@ -15,7 +17,7 @@ fun main() {
         vector3D(30, 30, 0),
         vector3D(0, 30, 0))
 
-    val mobile = vector3D(15, 20, -2)
+    val mobile = vector3D(15, 20, -3)
 
     val x by variable
     val y by variable
@@ -41,15 +43,21 @@ fun main() {
     println()
 
     var p = vector3D(0, 0, -1)
+    val pid = PIDLimiter(2E-4, 1E-5, 2E-5, 30.0)
     for (i in 1..1000) {
-        val grad = sample(dx, dy, dz, x, y, z, p) * 6E-5
-        if (grad.length < 0.01) break
-        p -= grad
+        val grad = sample(dx, dy, dz, x, y, z, p)
+        val k = pid(grad.length)
+        val step = grad.normalize() * k
+        p -= step
+
         println("迭代次数 = $i")
-        println("梯度 = ${grad.rowView()}")
+        println("步长 = $k")
+        println("步伐 = ${step.rowView()}")
         println("当前 = ${p.rowView()}")
         println("误差 = ${e.sample(x, y, z, p)}")
         println()
+
+        if (abs(k) < 5E-3) break
     }
 }
 
@@ -93,3 +101,25 @@ fun sample(
     dx.sample(x, y, z, current),
     dy.sample(x, y, z, current),
     dz.sample(x, y, z, current))
+
+class PIDLimiter(
+    private val ka: Double,
+    private val ki: Double,
+    private val kd: Double,
+    private val max: Double
+) {
+    private var last = .0
+    private var sum = .0
+
+    operator fun invoke(e: Double): Double {
+        val dd = e - last
+        last = e
+        sum = .9 * sum + .1 * e
+        val r = ka * e + ki * sum + kd * dd
+        return when {
+            r > +max -> +max
+            r < -max -> -max
+            else     -> r
+        }
+    }
+}
