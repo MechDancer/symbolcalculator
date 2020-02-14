@@ -32,13 +32,13 @@ class Power private constructor(
     operator fun component1() = v
     operator fun component2() = c
 
-    override fun toString() = "$v^$c"
+    override fun toString() =
+        if (c.value == 1.0) "$v" else "$v^$c"
 
     companion object Builders {
         fun pow(v: Variable, c: Constant) =
             when (c.value) {
-                0.0  -> Constant(1.0)
-                // 1.0  -> v
+                .0   -> Constant(1.0)
                 else -> Power(v, c)
             }
     }

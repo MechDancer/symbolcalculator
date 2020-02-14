@@ -8,20 +8,14 @@ import kotlin.reflect.KProperty
 
 // 求导
 
-inline class DVariable(val variable: Variable) {
-    companion object {
-        fun d(v: Variable) = DVariable(v)
-    }
-}
+inline class DVariable(val variable: Variable)
 
 inline class DExpression(val expression: Expression) {
-    operator fun div(v: DVariable) =
-        expression.d(v.variable)
-
-    companion object {
-        fun d(e: Expression) = DExpression(e)
-    }
+    operator fun div(v: DVariable) = expression.d(v.variable)
 }
+
+fun d(e: Expression) = DExpression(e)
+fun d(e: Variable) = DVariable(e)
 
 // 代入
 

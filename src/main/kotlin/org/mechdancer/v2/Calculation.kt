@@ -58,11 +58,14 @@ class Sum private constructor(
                 if (factors.none { it merge p }) factors += p
             }
 
-            for (item in this) if (item is Sum) {
-                process(item.c)
-                item.list.asSequence().flattenTo(factors)
-            } else
-                process(item)
+            for (item in this) when (item) {
+                Constant(.0) -> Unit
+                is Sum       -> {
+                    process(item.c)
+                    item.list.asSequence().flattenTo(factors)
+                }
+                else         -> process(item)
+            }
         }
 
         private class Factor(private var c: Double) {
@@ -120,23 +123,22 @@ class Product private constructor(
         fun product(list: Iterable<Expression>) = product(list.asSequence())
         fun product(vararg list: Expression) = product(list.asSequence())
         fun product(sequence: Sequence<Expression>) =
-            mutableListOf(mutableListOf<Factor>())
+            mutableListOf(mutableListOf<Factor>(Factor.C(1.0)))
                 .also { sequence.flattenTo(it) }
-                .asSequence()
-                .filterNot(Collection<*>::isEmpty)
-                .map { it.build() }
-                .let(Sum.Builders::sum)
+                .mapNotNull { it.takeUnless(Collection<*>::isEmpty)?.build() }
+                .let { it.singleOrNull() ?: Sum.sum(it) }
 
         private fun Sequence<Expression>.flattenTo(
             elements: MutableList<MutableList<Factor>>
         ) {
             for (item in this) when (item) {
-                is Product ->
+                Constant(1.0) -> Unit
+                is Product    ->
                     for (factors in elements) {
                         factors.process(item.c)
                         for (e in item.list) factors.process(e)
                     }
-                is Sum     -> {
+                is Sum        -> {
                     val itemsCopy = elements.toList()
                     elements.clear()
                     for (factors: MutableList<Factor> in itemsCopy) {
@@ -149,7 +151,7 @@ class Product private constructor(
                         }
                     }
                 }
-                else       ->
+                else          ->
                     for (factors in elements)
                         factors.process(item)
             }
@@ -180,9 +182,10 @@ class Product private constructor(
                     e as BasicElement
             }
             return when {
-                elements.isEmpty()            -> Constant(c)
-                c == .0 && elements.size == 1 -> elements.first()
-                else                          -> Product(elements, Constant(c))
+                c == .0                        -> Constant(.0)
+                elements.isEmpty()             -> Constant(c)
+                c == 1.0 && elements.size == 1 -> elements.first()
+                else                           -> Product(elements, Constant(c))
             }
         }
 
@@ -200,7 +203,7 @@ class Product private constructor(
 
             class Pow(val v: Variable, var c: Double) : Factor() {
                 override fun merge(others: Factor) =
-                    null != (others as? Pow)?.also { c += it.c }
+                    null != (others as? Pow)?.takeIf { it.v == v }?.also { c += it.c }
 
                 override fun build() =
                     Power.pow(v, Constant(c))
@@ -208,7 +211,7 @@ class Product private constructor(
 
             class Exp(var c: Double, val v: Variable) : Factor() {
                 override fun merge(others: Factor) =
-                    null != (others as? Exp)?.also { c *= it.c }
+                    null != (others as? Exp)?.takeIf { it.v == v }?.also { c *= it.c }
 
                 override fun build() =
                     Exponential.exp(Constant(c), v)

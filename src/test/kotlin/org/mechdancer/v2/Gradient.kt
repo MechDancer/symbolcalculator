@@ -1,4 +1,4 @@
-package org.mechdancer.symbol
+package org.mechdancer.v2
 
 import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.function.vector.euclid
@@ -7,7 +7,6 @@ import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
-import org.mechdancer.symbol.DExpression.Companion.d
 import kotlin.math.pow
 
 fun main() {
