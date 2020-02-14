@@ -1,5 +1,6 @@
 package org.mechdancer.v2
 
+import org.mechdancer.v2.Power.Builders.pow
 import org.mechdancer.v2.Product.Builders.product
 import org.mechdancer.v2.Sum.Builders.sum
 import kotlin.properties.ReadOnlyProperty
@@ -47,19 +48,46 @@ val variable get() = VariableProperty()
 
 // 表达式运算
 
+fun Number.toConstant() = Constant(toDouble())
+fun Variable.pow(n: Number) = pow(this, n.toConstant())
+operator fun Expression.unaryMinus() = product(this, (-1).toConstant())
+
 operator fun Expression.plus(others: Expression) = sum(this, others)
+operator fun Expression.minus(others: Expression) = sum(this, -others)
 operator fun Expression.times(others: Expression) = product(this, others)
 
-operator fun Expression.plus(n: Number) = this + Constant(n.toDouble())
-operator fun Expression.minus(n: Number) = this + Constant(-n.toDouble())
-operator fun Expression.times(n: Number) = this * Constant(n.toDouble())
+operator fun Expression.plus(n: Number) = this + n.toConstant()
+operator fun Expression.minus(n: Number) = this - n.toConstant()
+operator fun Expression.times(n: Number) = this * n.toConstant()
 operator fun Expression.div(n: Number) = this * Constant(1 / n.toDouble())
 
-operator fun Expression.unaryMinus() = this * -1
+operator fun Expression.plus(v: Variable) = this + v.toPower()
+operator fun Expression.minus(v: Variable) = this + v.toPower()
+operator fun Expression.times(v: Variable) = this * v.toPower()
+operator fun Expression.div(v: Variable) = this * v.toPower()
 
-operator fun Number.plus(e: Expression) = e + this
-operator fun Number.minus(e: Expression) = -e + this
-operator fun Number.times(e: Expression) = e * this
+operator fun Number.plus(e: Expression) = toConstant() + e
+operator fun Number.minus(e: Expression) = toConstant() - e
+operator fun Number.times(e: Expression) = toConstant() * e
+
+operator fun Number.plus(v: Variable) = toConstant() + v.toPower()
+operator fun Number.minus(v: Variable) = toConstant() - v.toPower()
+operator fun Number.times(v: Variable) = toConstant() * v.toPower()
+operator fun Number.div(v: Variable) = toConstant() * v.pow(-1)
+
+operator fun Variable.plus(e: Expression) = toPower() + e
+operator fun Variable.minus(e: Expression) = toPower() - e
+operator fun Variable.times(e: Expression) = toPower() * e
+
+operator fun Variable.plus(n: Number) = toPower() + n
+operator fun Variable.minus(n: Number) = toPower() - n
+operator fun Variable.times(n: Number) = toPower() * n
+operator fun Variable.div(n: Number) = toPower() / n
+
+operator fun Variable.plus(others: Variable) = toPower() + others
+operator fun Variable.minus(others: Variable) = toPower() - others
+operator fun Variable.times(others: Variable) = toPower() * others
+operator fun Variable.div(others: Variable) = toPower() / others
 
 fun Expression.pow(n: Int) =
     (2..n).fold(this) { r, _ -> r * this }
