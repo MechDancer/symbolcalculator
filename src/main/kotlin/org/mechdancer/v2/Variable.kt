@@ -1,7 +1,5 @@
 package org.mechdancer.v2
 
-inline class Variable(val name: String) : Expression {
-    override fun d(v: Variable) = Constant(if (this == v) 1.0 else .0)
-    override fun substitute(v: Variable, c: Constant) = if (this == v) c else this
+inline class Variable(private val name: String) {
     override fun toString() = name
 }
