@@ -1,18 +1,26 @@
 package org.mechdancer.v2
 
 /** 基本运算 */
-sealed class Calculation : Expression
+sealed class Calculation : Expression {
+    abstract val items: Sequence<Expression>
+}
 
 /** 和式 */
 class Sum private constructor(
     val list: List<Expression>,
     val c: Constant
 ) : Calculation() {
+    override val items
+        get() = sequence {
+            for (e in list) yield(e)
+            yield(c)
+        }
+
     override fun d(v: Variable) =
         sum(list.map { it.d(v) })
 
     override fun substitute(v: Variable, c: Constant) =
-        sum(list.map { it.substitute(v, c) } + c)
+        sum(list.map { it.substitute(v, c) } + this.c)
 
     override fun toString() =
         buildString {
@@ -60,10 +68,7 @@ class Sum private constructor(
 
             for (item in this) when (item) {
                 Constant(.0) -> Unit
-                is Sum       -> {
-                    process(item.c)
-                    item.list.asSequence().flattenTo(factors)
-                }
+                is Sum       -> item.items.flattenTo(factors)
                 else         -> process(item)
             }
         }
@@ -98,7 +103,13 @@ class Sum private constructor(
 class Product private constructor(
     val list: List<BasicElement>,
     val c: Constant
-) : Expression {
+) : Calculation() {
+    override val items
+        get() = sequence {
+            for (e in list) yield(e)
+            yield(c)
+        }
+
     override fun d(v: Variable) =
         product(c,
                 list.indices
@@ -111,7 +122,7 @@ class Product private constructor(
                     .let(Sum.Builders::sum))
 
     override fun substitute(v: Variable, c: Constant) =
-        product(list.map { it.substitute(v, c) } + c)
+        product(list.map { it.substitute(v, c) } + this.c)
 
     override fun toString() =
         buildString {
@@ -134,25 +145,20 @@ class Product private constructor(
             for (item in this) when (item) {
                 Constant(1.0) -> Unit
                 is Product    ->
-                    for (factors in elements) {
-                        factors.process(item.c)
-                        for (e in item.list) factors.process(e)
-                    }
+                    for (factors in elements)
+                        for (e in item.items)
+                            factors.process(e)
                 is Sum        -> {
                     val itemsCopy = elements.toList()
                     elements.clear()
                     for (factors in itemsCopy) {
                         fun copy() = factors.map(Factor::clone).toMutableList()
-
-                        elements += copy().process(item.c)
-                        for (e in item.list) elements +=
+                        elements.addAll(item.items.map { e ->
                             when (e) {
-                                is Product -> copy().also {
-                                    it.process(e.c)
-                                    for (e1 in e.list) it.process(e1)
-                                }
-                                else       -> copy().process(e)
+                                is Product -> copy().also { for (e1 in e.items) it.process(e1) }
+                                else       -> copy().also { it.process(e) }
                             }
+                        })
                     }
                 }
                 else          ->
@@ -161,8 +167,7 @@ class Product private constructor(
             }
         }
 
-        private fun MutableList<Factor>.process(e: Expression)
-            : MutableList<Factor> {
+        private fun MutableList<Factor>.process(e: Expression) {
             val p = when (e) {
                 is Constant    -> Factor.C(e.value)
                 is Power       -> Factor.Pow(e.v, e.c.value)
@@ -171,7 +176,6 @@ class Product private constructor(
                 else           -> throw IllegalArgumentException()
             }
             if (none { it merge p }) this += p
-            return this
         }
 
         private fun MutableList<Factor>.build()

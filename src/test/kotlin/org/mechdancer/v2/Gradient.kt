@@ -26,8 +26,6 @@ fun main() {
     val y by variable
     val z by variable
 
-    println(distance(x, y, z, beacons[0], mobile euclid beacons[0]).pow(2))
-
     val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
     val dx = d(e) / d(x)
     val dy = d(e) / d(y)
