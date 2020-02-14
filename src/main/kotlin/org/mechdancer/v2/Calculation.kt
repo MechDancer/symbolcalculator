@@ -141,14 +141,18 @@ class Product private constructor(
                 is Sum        -> {
                     val itemsCopy = elements.toList()
                     elements.clear()
-                    for (factors: MutableList<Factor> in itemsCopy) {
-                        val copy = factors.toList()
-                        sequence {
-                            yield(item.c)
-                            for (e in item.list) yield(e)
-                        }.forEach { e ->
-                            elements += copy.toMutableList().process(e)
-                        }
+                    for (factors in itemsCopy) {
+                        fun copy() = factors.map(Factor::clone).toMutableList()
+
+                        elements += copy().process(item.c)
+                        for (e in item.list) elements +=
+                            when (e) {
+                                is Product -> copy().also {
+                                    it.process(e.c)
+                                    for (e1 in e.list) it.process(e1)
+                                }
+                                else       -> copy().process(e)
+                            }
                     }
                 }
                 else          ->
@@ -192,6 +196,7 @@ class Product private constructor(
         private sealed class Factor {
             abstract infix fun merge(others: Factor): Boolean
             abstract fun build(): Expression
+            abstract fun clone(): Factor
 
             class C(var value: Double) : Factor() {
                 override fun merge(others: Factor) =
@@ -199,6 +204,8 @@ class Product private constructor(
 
                 override fun build() =
                     Constant(value)
+
+                override fun clone() = C(value)
             }
 
             class Pow(val v: Variable, var c: Double) : Factor() {
@@ -207,6 +214,8 @@ class Product private constructor(
 
                 override fun build() =
                     Power.pow(v, Constant(c))
+
+                override fun clone() = Pow(v, c)
             }
 
             class Exp(var c: Double, val v: Variable) : Factor() {
@@ -215,11 +224,14 @@ class Product private constructor(
 
                 override fun build() =
                     Exponential.exp(Constant(c), v)
+
+                override fun clone() = Exp(c, v)
             }
 
             class Log(val c: Double, val v: Variable) : Factor() {
                 override fun merge(others: Factor) = false
                 override fun build() = Logarithm.log(Constant(c), v)
+                override fun clone() = Log(c, v)
             }
         }
     }
