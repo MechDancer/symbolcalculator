@@ -1,5 +1,7 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.Constant.Companion.One
+import org.mechdancer.symbol.Constant.Companion.Zero
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -33,12 +35,15 @@ class Power private constructor(
     operator fun component2() = c
 
     override fun toString() =
-        if (c.value == 1.0) "$v" else "$v^$c"
+        when (c) {
+            One  -> "$v"
+            else -> "$v^$c"
+        }
 
     companion object Builders {
         fun pow(v: Variable, c: Constant) =
-            when (c.value) {
-                .0   -> Constant.One
+            when (c) {
+                Zero -> One
                 else -> Power(v, c)
             }
     }
@@ -75,9 +80,9 @@ class Exponential private constructor(
     companion object Builders {
         fun exp(c: Constant, v: Variable) =
             when {
-                c.value <= 0   -> throw IllegalArgumentException()
-                c.value == 1.0 -> c
-                else           -> Exponential(c, v)
+                c <= Zero -> throw IllegalArgumentException()
+                c == One  -> c
+                else      -> Exponential(c, v)
             }
     }
 }
@@ -113,9 +118,9 @@ class Logarithm private constructor(
     companion object Builders {
         fun log(c: Constant, v: Variable) =
             when {
-                c.value <= 0   -> throw IllegalArgumentException()
-                c.value == 1.0 -> Constant.Zero
-                else           -> Logarithm(c, v)
+                c <= Zero -> throw IllegalArgumentException()
+                c == One  -> Zero
+                else      -> Logarithm(c, v)
             }
     }
 }

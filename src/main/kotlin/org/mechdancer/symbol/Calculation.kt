@@ -1,5 +1,8 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.Constant.Companion.One
+import org.mechdancer.symbol.Constant.Companion.Zero
+
 /** 基本运算 */
 sealed class Calculation : Expression {
     abstract val items: Sequence<Expression>
@@ -25,7 +28,7 @@ class Sum private constructor(
     override fun toString() =
         buildString {
             append(list.joinToString(" + "))
-            if (c.value != .0) append(" + $c")
+            if (c != Zero) append(" + $c")
         }
 
     companion object Builders {
@@ -36,7 +39,9 @@ class Sum private constructor(
             val factors =
                 mutableListOf<Factor>()
                     .also { sequence.flattenTo(it) }
-                    .asSequence()
+                    // 消去并合并数值
+                    // 实际上通过加减可能得到的唯一数值是 0
+                    // 所以这一步等价于找到唯一不是 0 的数值或取 0
                     .mapNotNull {
                         val e = it.build()
                         if (e is Constant) {
@@ -45,7 +50,6 @@ class Sum private constructor(
                         } else
                             e
                     }
-                    .toList()
             return when {
                 factors.isEmpty()            -> Constant(c)
                 c == .0 && factors.size == 1 -> factors.first()
@@ -56,38 +60,65 @@ class Sum private constructor(
         private fun Sequence<Expression>.flattenTo(
             factors: MutableList<Factor>
         ) {
-            fun process(e: Expression) {
-                val p = when (e) {
-                    is Constant     -> Factor(e.value)
-                    is BasicElement -> Factor(1.0).also { it.from(e) }
-                    is Product      -> Factor(e.c.value).also { e.list.forEach(it::from) }
-                    else            -> throw IllegalArgumentException()
-                }
-                if (factors.none { it merge p }) factors += p
-            }
-
             for (item in this) when (item) {
-                Constant.NaN  -> {
+                Constant.NaN -> {
                     factors.clear()
-                    factors += Factor(Double.NaN)
+                    factors += Factor(item)
                     return
                 }
-                Constant.Zero -> Unit
-                is Sum        -> item.items.flattenTo(factors)
-                else          -> process(item)
+                Zero         -> Unit
+                is Sum       -> item.items.flattenTo(factors)
+                else         -> {
+                    val p = Factor(item)
+                    if (factors.none { it merge p }) factors += p
+                }
             }
         }
 
-        private class Factor(private var c: Double) {
-            private val pow = mutableSetOf<Pair<Variable, Double>>()
-            private val exp = mutableSetOf<Pair<Variable, Double>>()
-            private val log = mutableSetOf<Pair<Variable, Double>>()
+        private class Factor(e: Expression) {
+            private var c: Double
+            private val pow: Set<Pair<Variable, Double>>
+            private val exp: Set<Pair<Double, Variable>>
+            private val log: Set<Pair<Double, Variable>>
 
-            fun from(e: BasicElement) {
+            init {
                 when (e) {
-                    is Power       -> pow += e.v to e.c.value
-                    is Exponential -> exp += e.v to e.c.value
-                    is Logarithm   -> log += e.v to e.c.value
+                    is Constant    -> {
+                        c = e.value
+                        pow = emptySet()
+                        exp = emptySet()
+                        log = emptySet()
+                    }
+                    is Power       -> {
+                        c = 1.0
+                        pow = setOf(e.v to e.c.value)
+                        exp = emptySet()
+                        log = emptySet()
+                    }
+                    is Exponential -> {
+                        c = 1.0
+                        pow = emptySet()
+                        exp = setOf(e.c.value to e.v)
+                        log = emptySet()
+                    }
+                    is Logarithm   -> {
+                        c = 1.0
+                        pow = emptySet()
+                        exp = emptySet()
+                        log = setOf(e.c.value to e.v)
+                    }
+                    is Product     -> {
+                        c = e.c.value
+                        pow = mutableSetOf()
+                        exp = mutableSetOf()
+                        log = mutableSetOf()
+                        for (f in e.list) when (f) {
+                            is Power       -> pow += f.v to f.c.value
+                            is Exponential -> exp += f.c.value to f.v
+                            is Logarithm   -> log += f.c.value to f.v
+                        }
+                    }
+                    else           -> throw IllegalArgumentException()
                 }
             }
 
@@ -97,8 +128,8 @@ class Sum private constructor(
 
             fun build(): Expression =
                 Product.product(pow.map { (v, c) -> Power.pow(v, Constant(c)) } +
-                                exp.map { (v, c) -> Exponential.exp(Constant(c), v) } +
-                                log.map { (v, c) -> Logarithm.log(Constant(c), v) } +
+                                exp.map { (c, v) -> Exponential.exp(Constant(c), v) } +
+                                log.map { (c, v) -> Logarithm.log(Constant(c), v) } +
                                 Constant(c))
         }
     }
@@ -131,7 +162,7 @@ class Product private constructor(
 
     override fun toString() =
         buildString {
-            if (c.value != 1.0) append("$c ")
+            if (c != One) append("$c ")
             append(list.joinToString(" "))
         }
 
@@ -148,22 +179,21 @@ class Product private constructor(
             elements: MutableList<MutableList<Factor>>
         ) {
             for (item in this) when (item) {
-                Constant.NaN  -> {
+                Constant.NaN -> {
                     elements.clear()
                     elements += mutableListOf<Factor>(Factor.C(Double.NaN))
                     return
                 }
-                Constant.Zero -> {
+                Zero         -> {
                     elements.clear()
                     return
                 }
-                Constant.One  ->
-                    Unit
-                is Product    ->
+                One          -> Unit
+                is Product   ->
                     for (factors in elements)
                         for (e in item.items)
                             factors.process(e)
-                is Sum        -> {
+                is Sum       -> {
                     val itemsCopy = elements.toList()
                     elements.clear()
                     for (factors in itemsCopy) {
@@ -176,7 +206,7 @@ class Product private constructor(
                         })
                     }
                 }
-                else          ->
+                else         ->
                     for (factors in elements)
                         factors.process(item)
             }
@@ -205,7 +235,7 @@ class Product private constructor(
                     e as BasicElement
             }
             return when {
-                c == .0                        -> Constant.Zero
+                c == .0                        -> Zero
                 elements.isEmpty()             -> Constant(c)
                 c == 1.0 && elements.size == 1 -> elements.first()
                 else                           -> Product(elements, Constant(c))

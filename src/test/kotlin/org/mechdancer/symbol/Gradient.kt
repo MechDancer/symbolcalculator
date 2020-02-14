@@ -6,7 +6,6 @@ import org.mechdancer.algebra.function.vector.minus
 import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
-import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import kotlin.math.pow
 
 fun main() {
@@ -14,11 +13,7 @@ fun main() {
         vector3D(0, 0, 0),
         vector3D(30, 0, 0),
         vector3D(30, 30, 0),
-        vector3D(0, 30, 0),
-        vector3D(0, 0, -10),
-        vector3D(30, 0, -10),
-        vector3D(30, 30, -10),
-        vector3D(0, 30, -10))
+        vector3D(0, 30, 0))
 
     val mobile = vector3D(15, 20, -2)
 
@@ -26,18 +21,26 @@ fun main() {
     val y by variable
     val z by variable
 
+    // 热机
+    repeat(10) {
+        d(beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }) / d(x)
+    }
+
+    val t0 = System.currentTimeMillis()
+
     val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
     val dx = d(e) / d(x)
     val dy = d(e) / d(y)
     val dz = d(e) / d(z)
 
+    println("求导算法耗时 = ${System.currentTimeMillis() - t0}ms")
     println("误差函数 = $e")
     println("de/dx = $dx")
     println("de/dy = $dy")
     println("de/dz = $dz")
     println()
 
-    var p = vector3DOfZero()
+    var p = vector3D(0, 0, -1)
     for (i in 1..1000) {
         val grad = sample(dx, dy, dz, x, y, z, p) * 6E-5
         if (grad.length < 0.01) break
