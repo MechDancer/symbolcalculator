@@ -1,4 +1,4 @@
-package org.mechdancer.v2
+package org.mechdancer.symbol
 
 /** 基本运算 */
 sealed class Calculation : Expression {
@@ -7,8 +7,8 @@ sealed class Calculation : Expression {
 
 /** 和式 */
 class Sum private constructor(
-    val list: List<Expression>,
-    val c: Constant
+    private val list: List<Expression>,
+    private val c: Constant
 ) : Calculation() {
     override val items
         get() = sequence {
@@ -67,9 +67,14 @@ class Sum private constructor(
             }
 
             for (item in this) when (item) {
-                Constant(.0) -> Unit
-                is Sum       -> item.items.flattenTo(factors)
-                else         -> process(item)
+                Constant.NaN  -> {
+                    factors.clear()
+                    factors += Factor(Double.NaN)
+                    return
+                }
+                Constant.Zero -> Unit
+                is Sum        -> item.items.flattenTo(factors)
+                else          -> process(item)
             }
         }
 
@@ -101,8 +106,8 @@ class Sum private constructor(
 
 /** 积式 */
 class Product private constructor(
-    val list: List<BasicElement>,
-    val c: Constant
+    internal val list: List<BasicElement>,
+    internal val c: Constant
 ) : Calculation() {
     override val items
         get() = sequence {
@@ -143,7 +148,17 @@ class Product private constructor(
             elements: MutableList<MutableList<Factor>>
         ) {
             for (item in this) when (item) {
-                Constant(1.0) -> Unit
+                Constant.NaN  -> {
+                    elements.clear()
+                    elements += mutableListOf<Factor>(Factor.C(Double.NaN))
+                    return
+                }
+                Constant.Zero -> {
+                    elements.clear()
+                    return
+                }
+                Constant.One  ->
+                    Unit
                 is Product    ->
                     for (factors in elements)
                         for (e in item.items)
@@ -190,7 +205,7 @@ class Product private constructor(
                     e as BasicElement
             }
             return when {
-                c == .0                        -> Constant(.0)
+                c == .0                        -> Constant.Zero
                 elements.isEmpty()             -> Constant(c)
                 c == 1.0 && elements.size == 1 -> elements.first()
                 else                           -> Product(elements, Constant(c))

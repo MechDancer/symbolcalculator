@@ -1,8 +1,8 @@
-package org.mechdancer.v2
+package org.mechdancer.symbol
 
-import org.mechdancer.v2.Power.Builders.pow
-import org.mechdancer.v2.Product.Builders.product
-import org.mechdancer.v2.Sum.Builders.sum
+import org.mechdancer.symbol.Power.Builders.pow
+import org.mechdancer.symbol.Product.Builders.product
+import org.mechdancer.symbol.Sum.Builders.sum
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 

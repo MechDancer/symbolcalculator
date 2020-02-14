@@ -7,7 +7,6 @@ import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
-import org.mechdancer.symbol.DExpression.Companion.d
 import kotlin.math.pow
 
 fun main() {
@@ -26,8 +25,6 @@ fun main() {
     val x by variable
     val y by variable
     val z by variable
-
-    println(distance(x, y, z, beacons[0], mobile euclid beacons[0]).pow(2))
 
     val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
     val dx = d(e) / d(x)

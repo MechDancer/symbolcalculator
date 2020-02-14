@@ -5,11 +5,15 @@ plugins {
 }
 
 group = "org.mechdancer"
-version = "0.0.2"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
     jcenter()
+    maven("https://maven.aliyun.com/repository/central")
+    maven("https://maven.aliyun.com/repository/google")
+    maven("https://maven.aliyun.com/repository/gradle-plugin")
+    maven("https://maven.aliyun.com/repository/jcenter")
 }
 
 dependencies {
@@ -29,6 +33,17 @@ tasks {
     }
 }
 
+// 源码导出任务
+val sourceTaskName = "sourcesJar"
+task<Jar>(sourceTaskName) {
+    archiveClassifier.set("sources")
+    group = "build"
+
+    from(sourceSets["main"].allSource)
+}
+tasks["jar"].dependsOn(sourceTaskName)
+
+// 默认内联类
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
     freeCompilerArgs = listOf("-Xinline-classes")

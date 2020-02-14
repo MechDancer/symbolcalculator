@@ -1,4 +1,4 @@
-package org.mechdancer.v2
+package org.mechdancer.symbol
 
 import kotlin.math.ln
 import kotlin.math.pow
@@ -12,7 +12,7 @@ class Power private constructor(
     val c: Constant
 ) : BasicElement() {
     override fun d(v: Variable) =
-        if (this.v == v) org.mechdancer.v2.Product.product(c, pow(v, Constant(c.value - 1)))
+        if (this.v == v) Product.product(c, pow(v, Constant(c.value - 1)))
         else Constant(.0)
 
     override fun substitute(v: Variable, c: Constant) =
@@ -38,7 +38,7 @@ class Power private constructor(
     companion object Builders {
         fun pow(v: Variable, c: Constant) =
             when (c.value) {
-                .0   -> Constant(1.0)
+                .0   -> Constant.One
                 else -> Power(v, c)
             }
     }
@@ -114,7 +114,7 @@ class Logarithm private constructor(
         fun log(c: Constant, v: Variable) =
             when {
                 c.value <= 0   -> throw IllegalArgumentException()
-                c.value == 1.0 -> Constant(.0)
+                c.value == 1.0 -> Constant.Zero
                 else           -> Logarithm(c, v)
             }
     }
