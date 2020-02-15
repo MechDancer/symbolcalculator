@@ -11,7 +11,4 @@ interface Expression {
     operator fun minus(c: Constant): Expression = Sum(-c, this)
     operator fun times(c: Constant): Expression = Product(c, this)
     operator fun div(c: Constant): Expression = Product(`1` / c, this)
-
-    interface FunctionExpression : Expression
-    interface FactorExpression : FunctionExpression
 }

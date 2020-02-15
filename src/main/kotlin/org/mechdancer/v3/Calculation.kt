@@ -1,8 +1,5 @@
 package org.mechdancer.v3
 
-import org.mechdancer.v3.Expression.FactorExpression
-import org.mechdancer.v3.Expression.FunctionExpression
-
 /** 运算 */
 sealed class Calculation : FunctionExpression {
     protected abstract fun timesWithoutCheck(c: Constant): Expression
@@ -25,9 +22,11 @@ sealed class Calculation : FunctionExpression {
 
 /** 和式 */
 class Sum private constructor(
-    val products: Set<FunctionExpression>,
-    val tail: Constant
-) : Calculation() {
+    internal val products: Set<ProductExpression>,
+    internal val tail: Constant
+) : Calculation(),
+    BaseExpression,
+    LnExpression {
     override fun d(v: Variable) =
         Builder(products.map { it d v })
 
@@ -42,8 +41,8 @@ class Sum private constructor(
 
     override fun plus(c: Constant) = Sum(products, tail + c)
     override fun minus(c: Constant) = Sum(products, tail - c)
-    override fun timesWithoutCheck(c: Constant) = Sum(products.map { (it * c) as FunctionExpression }.toSet(), tail * c)
-    override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as FunctionExpression }.toSet(), tail / c)
+    override fun timesWithoutCheck(c: Constant) = Sum(products.map { (it * c) as ProductExpression }.toSet(), tail * c)
+    override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as ProductExpression }.toSet(), tail / c)
 
     companion object Builder {
         operator fun invoke(vararg members: Expression) = invoke(members.asList())
@@ -58,9 +57,11 @@ class Sum private constructor(
 
 /** 积式 */
 class Product private constructor(
-    val factors: Set<FactorExpression>,
-    val tail: Constant
-) : Calculation() {
+    internal val factors: Set<FactorExpression>,
+    internal val tail: Constant
+) : Calculation(),
+    ProductExpression,
+    ExponentialExpression {
     override fun d(v: Variable): Expression =
         factors.indices
             .map { i ->
@@ -84,13 +85,6 @@ class Product private constructor(
     override fun divWithoutCheck(c: Constant) = resetTail(tail / c)
 
     companion object Builder {
-        fun productOf(times: Constant, vararg factors: Factor) =
-            when (factors.size) {
-                0    -> throw UnsupportedOperationException()
-                1    -> Product(setOf(factors.first()), times)
-                else -> TODO()
-            }
-
         operator fun invoke(vararg e: Expression) = invoke(e.asList())
         operator fun invoke(e: Collection<Expression>) =
             when (e.size) {
