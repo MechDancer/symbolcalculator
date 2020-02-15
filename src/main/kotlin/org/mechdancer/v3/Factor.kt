@@ -50,7 +50,7 @@ internal sealed class Factor(
     protected abstract val df: Member
 
     /** 代入构造函数 */
-    protected abstract fun substitute(m: Member): Member
+    protected abstract fun substitute(m: Member): Expression
 
     /** 对复合函数的成分加括号 */
     protected val parameterString get() = if (isBasic()) "$member" else "($member)"
@@ -61,15 +61,12 @@ internal class Power private constructor(
     member: FunctionMember,
     val exponent: Constant
 ) : Factor(member) {
-    override val df by lazy { Product(exponent, Builder(member, exponent - Constant.`1`)) }
+    override val df by lazy { Product(exponent, memberOf(Builder(member, exponent - Constant.`1`))) }
 
     override fun substitute(m: Member) = Builder(m, exponent)
 
     override fun equals(other: Any?) =
-        this === other
-        || other is Power
-        && exponent == other.exponent
-        && member == other.member
+        this === other || other is Power && exponent == other.exponent && member == other.member
 
     override fun hashCode() = member.hashCode() xor exponent.hashCode()
     operator fun component1() = member
@@ -77,7 +74,17 @@ internal class Power private constructor(
     override fun toString() = "$parameterString^$exponent"
 
     companion object Builder {
-        operator fun invoke(m: Member, e: Constant): Member = TODO()
+        operator fun invoke(m: Member, e: Constant) =
+            when (e) {
+                Constant.`0` -> Constant.`1`
+                Constant.`1` -> m
+                else         -> when (m) {
+                    is Constant -> m pow e
+                    is Variable -> Power(m, e)
+                    is Sum      -> TODO()
+                    else        -> throw UnsupportedOperationException()
+                }
+            }
     }
 }
 
@@ -90,10 +97,7 @@ internal class Exponential private constructor(
     override fun substitute(m: Member) = Builder(base, m)
 
     override fun equals(other: Any?) =
-        this === other
-        || other is Exponential
-        && base == other.base
-        && member == other.member
+        this === other || other is Exponential && base == other.base && member == other.member
 
     override fun hashCode() = base.hashCode() xor member.hashCode()
     operator fun component1() = base
@@ -101,7 +105,18 @@ internal class Exponential private constructor(
     override fun toString() = "$base^$parameterString"
 
     companion object Builder {
-        operator fun invoke(b: Constant, m: Member): Member = TODO()
+        operator fun invoke(b: Constant, m: Member) =
+            when {
+                b < Constant.`0`  -> throw UnsupportedOperationException()
+                b == Constant.`0` -> Constant.`0`
+                b == Constant.`1` -> Constant.`1`
+                else              -> when (m) {
+                    is Constant -> b pow m
+                    is Variable -> Exponential(b, m)
+                    is Sum      -> TODO()
+                    else        -> throw UnsupportedOperationException()
+                }
+            }
     }
 }
 
@@ -111,12 +126,17 @@ internal class Ln private constructor(
 ) : Factor(member) {
     override val df by lazy { memberOf(Power(member, Constant.`-1`)) }
     override fun substitute(m: Member) = Builder(m)
-
     override fun equals(other: Any?) = (this === other) || member == (other as? Ln)?.member
     override fun hashCode() = member.hashCode()
     override fun toString() = "ln$parameterString"
 
     companion object Builder {
-        operator fun invoke(m: Member): Member = TODO()
+        operator fun invoke(m: Member) =
+            when (m) {
+                is Constant -> ln(m)
+                is Variable -> Ln(m)
+                is Sum      -> TODO()
+                else        -> throw UnsupportedOperationException()
+            }
     }
 }

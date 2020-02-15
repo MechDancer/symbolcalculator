@@ -9,5 +9,11 @@ import org.mechdancer.v3.Expression.Member
 inline class Variable(private val name: String) : FunctionMember {
     override fun d(v: Variable) = if (this == v) `1` else `0`
     override fun substitute(v: Variable, m: Member) = if (this == v) m else this
+
+    override fun plus(c: Constant) = Sum(this) + c
+    override fun minus(c: Constant) = Sum(this) - c
+    override fun times(c: Constant) = Sum(this) * c
+    override fun div(c: Constant) = Sum(this) / c
+
     override fun toString() = name
 }
