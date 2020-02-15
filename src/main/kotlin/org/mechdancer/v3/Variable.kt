@@ -1,13 +1,13 @@
-//package org.mechdancer.v3
-//
-//import org.mechdancer.symbol.Constant.Companion.One
-//import org.mechdancer.symbol.Constant.Companion.Zero
-//import org.mechdancer.symbol.Power.Builder.pow
-//
-///** 变量是表达式树的叶子 */
-//inline class Variable(private val name: String) : Expression {
-//    override fun d(v: Variable) = if (this == v) One else Zero
-//    override fun substitute(v: Variable, c: Constant) = if (this == v) c else this
-//    override fun toString() = name
-//    fun toPower() = pow(this, Constant(1.0))
-//}
+package org.mechdancer.v3
+
+import org.mechdancer.v3.Constant.Companion.`0`
+import org.mechdancer.v3.Constant.Companion.`1`
+import org.mechdancer.v3.Expression.FunctionMember
+import org.mechdancer.v3.Expression.Member
+
+/** 变量是表达式树的叶子 */
+inline class Variable(private val name: String) : FunctionMember {
+    override fun d(v: Variable) = if (this == v) `1` else `0`
+    override fun substitute(v: Variable, m: Member) = if (this == v) m else this
+    override fun toString() = name
+}
