@@ -1,24 +1,38 @@
 package org.mechdancer.v3
 
-import org.mechdancer.v3.Constant.Companion
-import org.mechdancer.v3.Expression.FunctionMember
-import org.mechdancer.v3.Expression.Member
-import org.mechdancer.v3.Product.Builder.productOf
-import org.mechdancer.v3.Sum.Builder.memberOf
+import org.mechdancer.v3.Expression.FactorExpression
+import org.mechdancer.v3.Expression.FunctionExpression
 
 /** 运算 */
-sealed class Calculation : Expression
+sealed class Calculation : FunctionExpression {
+    protected abstract fun timesWithoutCheck(c: Constant): Expression
+    protected abstract fun divWithoutCheck(c: Constant): Expression
+
+    final override fun times(c: Constant) =
+        when (c) {
+            Constant.`0` -> Constant.`0`
+            Constant.`1` -> this
+            else         -> timesWithoutCheck(c)
+        }
+
+    final override fun div(c: Constant) =
+        when (c) {
+            Constant.`0` -> Constant.NaN
+            Constant.`1` -> this
+            else         -> divWithoutCheck(c)
+        }
+}
 
 /** 和式 */
 class Sum private constructor(
-    internal val products: Set<Product>,
-    internal val tail: Constant
-) : Calculation(), FunctionMember, FactorBox {
+    val products: Set<FunctionExpression>,
+    val tail: Constant
+) : Calculation() {
     override fun d(v: Variable) =
-        Builder(products.map { memberOf(it.d(v)) })
+        Builder(products.map { it d v })
 
-    override fun substitute(v: Variable, m: Member) =
-        Builder(products.map { memberOf(it.substitute(v, m)) }) + tail
+    override fun substitute(v: Variable, e: Expression) =
+        Builder(products.map { it.substitute(v, e) }) + tail
 
     override fun toString() =
         buildString {
@@ -28,41 +42,12 @@ class Sum private constructor(
 
     override fun plus(c: Constant) = Sum(products, tail + c)
     override fun minus(c: Constant) = Sum(products, tail - c)
-    override fun times(c: Constant) =
-        when (c) {
-            Constant.`0` -> Constant.`0`
-            Constant.`1` -> this
-            else         -> Sum(products.map { it * c }.toSet(), tail * c)
-        }
-
-    override fun div(c: Constant) = this * (Constant.`1` / c)
-
-    internal fun unbox() =
-        if (tail == Constant.`0` && products.size == 1) {
-            val product = products.first()
-            if (product.tail == Companion.`1` && product.factors.size == 1)
-                product.factors.first()
-            else
-                product
-        } else this
+    override fun timesWithoutCheck(c: Constant) = Sum(products.map { (it * c) as FunctionExpression }.toSet(), tail * c)
+    override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as FunctionExpression }.toSet(), tail / c)
 
     companion object Builder {
-        internal fun box(f: Factor) =
-            Sum(setOf(productOf(Constant.`1`, f)), Constant.`0`)
-
-        internal fun box(p: Product) =
-            Sum(setOf(p), Constant.`0`)
-
-        internal fun memberOf(e: Expression): Member =
-            when (e) {
-                is Member  -> e
-                is Factor  -> box(e)
-                is Product -> box(e)
-                else       -> throw UnsupportedOperationException()
-            }
-
-        operator fun invoke(vararg members: Member) = invoke(members.asList())
-        operator fun invoke(members: Collection<Member>) =
+        operator fun invoke(vararg members: Expression) = invoke(members.asList())
+        operator fun invoke(members: Collection<Expression>) =
             when (members.size) {
                 0    -> throw UnsupportedOperationException()
                 1    -> members.first()
@@ -72,10 +57,10 @@ class Sum private constructor(
 }
 
 /** 积式 */
-internal class Product private constructor(
-    val factors: Set<Factor>,
+class Product private constructor(
+    val factors: Set<FactorExpression>,
     val tail: Constant
-) : Calculation(), FactorBox {
+) : Calculation() {
     override fun d(v: Variable): Expression =
         factors.indices
             .map { i ->
@@ -85,8 +70,8 @@ internal class Product private constructor(
             }
             .let(Sum.Builder::invoke) * tail
 
-    override fun substitute(v: Variable, m: Member) =
-        Builder(factors.map { it.substitute(v, m) }) * tail
+    override fun substitute(v: Variable, e: Expression) =
+        Builder(factors.map { it.substitute(v, e) }) * tail
 
     override fun toString() =
         buildString {
@@ -94,15 +79,9 @@ internal class Product private constructor(
             append(factors.joinToString(" "))
         }
 
-    fun resetTail(newTail: Constant) =
-        Product(factors, newTail)
-
-    // region 这两个短路计算函数只能由 [Sum] 调用，[Sum] 负责检查特殊常数
-
-    operator fun times(c: Constant) = Product(factors, tail * c)
-    operator fun div(c: Constant) = this * (Constant.`1` / c)
-
-    // endregion
+    internal fun resetTail(newTail: Constant) = Product(factors, newTail)
+    override fun timesWithoutCheck(c: Constant) = resetTail(tail * c)
+    override fun divWithoutCheck(c: Constant) = resetTail(tail / c)
 
     companion object Builder {
         fun productOf(times: Constant, vararg factors: Factor) =
@@ -116,7 +95,7 @@ internal class Product private constructor(
         operator fun invoke(e: Collection<Expression>) =
             when (e.size) {
                 0    -> throw UnsupportedOperationException()
-                1    -> memberOf(e.first())
+                1    -> e.first()
                 else -> TODO()
             }
     }

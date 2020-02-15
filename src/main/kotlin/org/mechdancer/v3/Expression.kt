@@ -1,22 +1,17 @@
 package org.mechdancer.v3
 
+import org.mechdancer.v3.Constant.Companion.`1`
+
 /** 可微表达式 */
 interface Expression {
-    infix fun d(v: Variable): Expression = TODO()
-    fun substitute(v: Variable, m: Member): Expression = TODO()
+    infix fun d(v: Variable): Expression
+    fun substitute(v: Variable, e: Expression): Expression
 
-    /** 运算成分 */
-    interface Member : Expression {
-        override fun d(v: Variable): Member
-        override fun substitute(v: Variable, m: Member): Member
+    operator fun plus(c: Constant): Expression = Sum(c, this)
+    operator fun minus(c: Constant): Expression = Sum(-c, this)
+    operator fun times(c: Constant): Expression = Product(c, this)
+    operator fun div(c: Constant): Expression = Product(`1` / c, this)
 
-        operator fun plus(c: Constant): Member
-        operator fun minus(c: Constant): Member
-        operator fun times(c: Constant): Member
-        operator fun div(c: Constant): Member
-    }
-
-    /** 函数化运算成分（包含变量的运算成分） */
-    interface FunctionMember : Member
-
+    interface FunctionExpression : Expression
+    interface FactorExpression : FunctionExpression
 }

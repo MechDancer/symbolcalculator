@@ -1,6 +1,5 @@
 package org.mechdancer.v3
 
-import org.mechdancer.v3.Expression.Member
 import java.text.DecimalFormat
 import kotlin.math.ln
 import kotlin.math.log
@@ -8,9 +7,9 @@ import kotlin.math.pow
 
 /** 常数是表达式树的叶子 */
 inline class Constant(val value: Double)
-    : Member, Comparable<Constant> {
+    : Expression, Comparable<Constant> {
     override fun d(v: Variable) = Constant(.0)
-    override fun substitute(v: Variable, m: Member) = this
+    override fun substitute(v: Variable, e: Expression) = this
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString(): String = formatter.format(value)
 
@@ -19,6 +18,7 @@ inline class Constant(val value: Double)
     override fun times(c: Constant) = Constant(value * c.value)
     override fun div(c: Constant) = Constant(value / c.value)
 
+    operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
     infix fun log(others: Constant) = Constant(log(others.value, value))
 
