@@ -1,5 +1,6 @@
 package org.mechdancer.v3
 
+import org.mechdancer.v3.Constant.Companion
 import org.mechdancer.v3.Expression.FunctionMember
 import org.mechdancer.v3.Expression.Member
 import org.mechdancer.v3.Product.Builder.productOf
@@ -10,9 +11,9 @@ sealed class Calculation : Expression
 
 /** 和式 */
 class Sum private constructor(
-    private val products: Set<Product>,
-    private val tail: Constant
-) : Calculation(), FunctionMember {
+    internal val products: Set<Product>,
+    internal val tail: Constant
+) : Calculation(), FunctionMember, FactorBox {
     override fun d(v: Variable) =
         Builder(products.map { memberOf(it.d(v)) })
 
@@ -36,12 +37,27 @@ class Sum private constructor(
 
     override fun div(c: Constant) = this * (Constant.`1` / c)
 
+    internal fun unbox() =
+        if (tail == Constant.`0` && products.size == 1) {
+            val product = products.first()
+            if (product.tail == Companion.`1` && product.factors.size == 1)
+                product.factors.first()
+            else
+                product
+        } else this
+
     companion object Builder {
+        internal fun box(f: Factor) =
+            Sum(setOf(productOf(Constant.`1`, f)), Constant.`0`)
+
+        internal fun box(p: Product) =
+            Sum(setOf(p), Constant.`0`)
+
         internal fun memberOf(e: Expression): Member =
             when (e) {
                 is Member  -> e
-                is Factor  -> Sum(setOf(productOf(Constant.`1`, e)), Constant.`0`)
-                is Product -> Sum(setOf(e), Constant.`0`)
+                is Factor  -> box(e)
+                is Product -> box(e)
                 else       -> throw UnsupportedOperationException()
             }
 
@@ -57,9 +73,9 @@ class Sum private constructor(
 
 /** 积式 */
 internal class Product private constructor(
-    private val factors: Set<Factor>,
-    private val tail: Constant
-) : Calculation() {
+    val factors: Set<Factor>,
+    val tail: Constant
+) : Calculation(), FactorBox {
     override fun d(v: Variable): Expression =
         factors.indices
             .map { i ->
@@ -77,6 +93,9 @@ internal class Product private constructor(
             if (tail != Constant.`1`) append("$tail ")
             append(factors.joinToString(" "))
         }
+
+    fun resetTail(newTail: Constant) =
+        Product(factors, newTail)
 
     // region 这两个短路计算函数只能由 [Sum] 调用，[Sum] 负责检查特殊常数
 

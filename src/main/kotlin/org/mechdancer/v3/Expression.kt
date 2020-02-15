@@ -18,4 +18,5 @@ interface Expression {
 
     /** 函数化运算成分（包含变量的运算成分） */
     interface FunctionMember : Member
+
 }

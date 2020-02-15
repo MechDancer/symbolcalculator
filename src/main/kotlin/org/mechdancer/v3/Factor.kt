@@ -1,10 +1,14 @@
 package org.mechdancer.v3
 
+import org.mechdancer.v3.Constant.Companion
 import org.mechdancer.v3.Constant.Companion.ln
 import org.mechdancer.v3.Expression.FunctionMember
 import org.mechdancer.v3.Expression.Member
 import org.mechdancer.v3.Product.Builder.productOf
+import org.mechdancer.v3.Sum.Builder.box
 import org.mechdancer.v3.Sum.Builder.memberOf
+
+internal interface FactorBox : Expression
 
 /**
  * 因子，作为积式成分而不可合并的对象
@@ -15,7 +19,7 @@ import org.mechdancer.v3.Sum.Builder.memberOf
  */
 internal sealed class Factor(
     val member: FunctionMember
-) : Expression {
+) : FactorBox {
     /** 判断是否基本初等函数 */
     fun isBasic() = member is Variable
 
@@ -74,6 +78,13 @@ internal class Power private constructor(
     override fun toString() = "$parameterString^$exponent"
 
     companion object Builder {
+        private fun Factor.simplify(e: Constant): Expression =
+            when (this) {
+                is Power -> Builder(member, exponent pow e)
+                is Exponential,
+                is Ln    -> Power(box(this), e)
+            }
+
         operator fun invoke(m: Member, e: Constant) =
             when (e) {
                 Constant.`0` -> Constant.`1`
@@ -81,7 +92,12 @@ internal class Power private constructor(
                 else         -> when (m) {
                     is Constant -> m pow e
                     is Variable -> Power(m, e)
-                    is Sum      -> TODO()
+                    is Sum      -> when (val box = m.unbox()) {
+                        is Factor  -> box.simplify(e)
+                        is Product -> Product(box.factors.map { it.simplify(e) }) * (box.tail pow e)
+                        is Sum     -> Power(box, e)
+                        else       -> throw UnsupportedOperationException()
+                    }
                     else        -> throw UnsupportedOperationException()
                 }
             }
@@ -105,7 +121,14 @@ internal class Exponential private constructor(
     override fun toString() = "$base^$parameterString"
 
     companion object Builder {
-        operator fun invoke(b: Constant, m: Member) =
+        private fun Factor.simplify(base: Constant): Expression =
+            when (this) {
+                is Power       -> Exponential(base, box(this))
+                is Exponential -> Builder(base pow base, member)
+                is Ln          -> Power(member, ln(base))
+            }
+
+        operator fun invoke(b: Constant, m: Member): Expression =
             when {
                 b < Constant.`0`  -> throw UnsupportedOperationException()
                 b == Constant.`0` -> Constant.`0`
@@ -113,7 +136,12 @@ internal class Exponential private constructor(
                 else              -> when (m) {
                     is Constant -> b pow m
                     is Variable -> Exponential(b, m)
-                    is Sum      -> TODO()
+                    is Sum      -> when (val box = m.unbox()) {
+                        is Factor  -> box.simplify(b)
+                        is Product -> Exponential(b pow box.tail, box(box.resetTail(Companion.`1`)))
+                        is Sum     -> Product(m.products.map { Builder(b, box(it)) }) * (b pow m.tail)
+                        else       -> throw UnsupportedOperationException()
+                    }
                     else        -> throw UnsupportedOperationException()
                 }
             }
@@ -131,11 +159,23 @@ internal class Ln private constructor(
     override fun toString() = "ln$parameterString"
 
     companion object Builder {
-        operator fun invoke(m: Member) =
+        private fun Factor.simplify(): Expression =
+            when (this) {
+                is Power       -> memberOf(Builder(member)) * exponent
+                is Exponential -> member * ln(base)
+                is Ln          -> Ln(box(this))
+            }
+
+        operator fun invoke(m: Member): Expression =
             when (m) {
                 is Constant -> ln(m)
                 is Variable -> Ln(m)
-                is Sum      -> TODO()
+                is Sum      -> when (val box = m.unbox()) {
+                    is Factor  -> box.simplify()
+                    is Product -> Sum(box.factors.map { memberOf(it.simplify()) }) + ln(box.tail)
+                    is Sum     -> Ln(box)
+                    else       -> throw UnsupportedOperationException()
+                }
                 else        -> throw UnsupportedOperationException()
             }
     }
