@@ -21,6 +21,11 @@ sealed class Calculation : FunctionExpression {
 }
 
 private typealias SumCollector = MutableMap<Expression, Double>
+private typealias PowerCollector = MutableMap<BaseExpression, Double>
+
+private fun <T : Expression> MutableMap<T, Double>.merge(e: T, b: Double) {
+    compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
+}
 
 /** 和式 */
 class Sum private constructor(
@@ -64,22 +69,25 @@ class Sum private constructor(
                 }
             }
 
-        private fun SumCollector.merge(e: Expression, b: Double) {
-            compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
-        }
-
-        private operator fun SumCollector.plusAssign(e: Expression): Unit =
-            when (e) {
-                Constant.`0`        -> Unit
-                is Constant         -> merge(Constant.`1`, e.value)
-                is FactorExpression -> merge(e, 1.0)
-                is Product          -> merge(e.resetTail(Constant.`1`), e.tail.value)
-                is Sum              -> {
-                    for (p in e.products) this += p
-                    this += e.tail
+        private operator fun SumCollector.plusAssign(e: Expression) {
+            fun inner(e: ProductExpression): Unit =
+                when (e) {
+                    is FactorExpression -> merge(e, 1.0) // {var, factor = {pow, exp, ln}}
+                    is Product          -> merge(e.resetTail(Constant.`1`), e.tail.value)
+                    else                -> throw UnsupportedOperationException()
                 }
-                else                -> throw UnsupportedOperationException()
+
+            return when (e) {
+                Constant.`0`         -> Unit
+                is Constant          -> merge(Constant.`1`, e.value)
+                is ProductExpression -> inner(e) // {var, product = {factor = {pow, exp, ln}, product}}
+                is Sum               -> {
+                    for (p in e.products) inner(p)
+                    merge(Constant.`1`, e.tail.value)
+                }
+                else                 -> throw UnsupportedOperationException()
             }
+        }
     }
 }
 
@@ -124,7 +132,38 @@ class Product private constructor(
             when (e.size) {
                 0    -> throw UnsupportedOperationException()
                 1    -> e.first()
-                else -> TODO()
+                else -> {
+                    TODO()
+                }
             }
+
+        private class ProductCollector {
+            private var tail = 1.0
+            private val powers = mutableMapOf<BaseExpression, Double>()
+
+            operator fun timesAssign(c: Constant) =
+                when (c) {
+                    Constant.`1` -> Unit
+                    else         -> tail *= c.value
+                }
+
+            operator fun timesAssign(e: ProductExpression) {
+                fun inner(e: FactorExpression) =
+                    when (e) {
+                        is BaseExpression -> powers.merge(e, 1.0) // {var, exp, ln}
+                        is Power          -> powers.merge(e.member, e.exponent.value)
+                        else              -> throw UnsupportedOperationException()
+                    }
+
+                return when (e) {
+                    is FactorExpression -> inner(e) // {var, factor = {pow, exp, ln}}
+                    is Product          -> {
+                        for (p in e.factors) inner(p)
+                        tail *= e.tail.value
+                    }
+                    else                -> throw UnsupportedOperationException()
+                }
+            }
+        }
     }
 }
