@@ -20,6 +20,8 @@ inline class Constant(val value: Double)
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
 
+    fun reciprocal() = Constant(1 / value)
+
     @Suppress("ObjectPropertyName")
     companion object {
         private val formatter = DecimalFormat("#.#")

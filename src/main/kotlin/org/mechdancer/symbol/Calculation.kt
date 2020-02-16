@@ -41,11 +41,16 @@ class Sum private constructor(
     override fun d(v: Variable) = get(products.map { it d v })
     override fun substitute(v: Variable, e: Expression) = get(products.map { it.substitute(v, e) }) + tail
 
+    override fun equals(other: Any?) =
+        this === other || other is Sum && tail == other.tail && products == other.products
+
+    override fun hashCode() = products.hashCode() xor tail.hashCode()
+
     override fun toString() =
         buildString {
             append(products.first())
             for (item in products.asSequence().drop(1))
-                append(if (item is Product && item.tail < `0`)
+                append(if (item is Product && item.times < `0`)
                            " - ${item.toString().drop(1)}"
                        else " + $item")
             when {
@@ -84,7 +89,7 @@ class Sum private constructor(
             fun inner(e: ProductExpression): Unit =
                 when (e) {
                     is FactorExpression -> merge(e, 1.0) // {var, factor = {pow, exp, ln}}
-                    is Product          -> merge(e.resetTail(`1`), e.tail.value)
+                    is Product          -> merge(e.resetTimes(`1`), e.times.value)
                     else                -> throw UnsupportedOperationException()
                 }
 
@@ -105,7 +110,7 @@ class Sum private constructor(
 /** 积式 */
 class Product private constructor(
     internal val factors: Set<FactorExpression>,
-    internal val tail: Constant
+    internal val times: Constant
 ) : Calculation(),
     ProductExpression,
     ExponentialExpression {
@@ -116,26 +121,26 @@ class Product private constructor(
                     .mapIndexed { j, it -> if (i == j) it.d(v) else it }
                     .let(Builder::get)
             }
-            .let(Sum.Builder::get) * tail
+            .let(Sum.Builder::get) * times
 
     override fun substitute(v: Variable, e: Expression) =
-        get(factors.map { it.substitute(v, e) }) * tail
+        get(factors.map { it.substitute(v, e) }) * times
+
+    override fun equals(other: Any?) =
+        this === other || other is Product && times == other.times && factors == other.factors
+
+    override fun hashCode() =
+        factors.hashCode() xor times.hashCode()
 
     override fun toString() =
         buildString {
-            if (tail != `1`) append("$tail ")
+            if (times != `1`) append("$times ")
             append(factors.joinToString(" "))
         }
 
-    internal fun resetTail(newTail: Constant) = Product(factors, newTail)
-    override fun timesWithoutCheck(c: Constant) = resetTail(tail * c)
-    override fun divWithoutCheck(c: Constant) = resetTail(tail / c)
-
-    override fun equals(other: Any?) =
-        this === other || other is Product && tail == other.tail && factors == other.factors
-
-    override fun hashCode() =
-        factors.hashCode() xor tail.hashCode()
+    internal fun resetTimes(new: Constant) = Product(factors, new)
+    override fun timesWithoutCheck(c: Constant) = resetTimes(times * c)
+    override fun divWithoutCheck(c: Constant) = resetTimes(times / c)
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
@@ -188,7 +193,7 @@ class Product private constructor(
                     is FactorExpression -> inner(e) // {var, factor = {pow, exp, ln}}
                     is Product          -> {
                         for (p in e.factors) inner(p)
-                        tail *= e.tail.value
+                        tail *= e.times.value
                     }
                     else                -> throw UnsupportedOperationException()
                 }

@@ -86,7 +86,7 @@ class Power private constructor(
                 else -> when (e) {
                     is Constant         -> e pow exponent
                     is FactorExpression -> simplify(e)
-                    is Product          -> Product[e.factors.map(::simplify)] * (e.tail pow exponent)
+                    is Product          -> Product[e.factors.map(::simplify)] * (e.times pow exponent)
                     is Sum              -> Power(e, exponent)
                     else                -> throw UnsupportedOperationException()
                 }
@@ -115,7 +115,7 @@ class Exponential private constructor(
         tailrec operator fun get(b: Constant, e: Expression): Expression =
             @Suppress("NON_TAIL_RECURSIVE_CALL")
             when {
-                b < `0`  -> throw UnsupportedOperationException()
+                b < `0`  -> throw IllegalArgumentException()
                 b == `0` -> `0`
                 b == `1` -> `1`
                 else     -> when (e) {
@@ -124,7 +124,7 @@ class Exponential private constructor(
                     is Power       -> Exponential(b, e)
                     is Exponential -> get(b pow e.base, e.member)
                     is Ln          -> Power[e.member, ln(b)]
-                    is Product     -> Exponential(b pow e.tail, e.resetTail(`1`))
+                    is Product     -> Exponential(b pow e.times, e.resetTimes(`1`))
                     is Sum         -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
                     else           -> throw UnsupportedOperationException()
                 }
@@ -143,7 +143,7 @@ class Ln private constructor(
     override fun toString() = "ln$parameterString"
 
     companion object Builder {
-        private fun simplify(f: FactorExpression): Expression =
+        private fun simplify(f: FactorExpression) =
             when (f) {
                 is LnExpression -> Ln(f)
                 is Power        -> get(f.member) * f.exponent
@@ -155,9 +155,15 @@ class Ln private constructor(
             when (e) {
                 is Constant         -> ln(e)
                 is FactorExpression -> simplify(e)
-                is Product          -> Sum[e.factors.map(::simplify)] + ln(e.tail)
+                is Product          -> Sum[e.factors.map(::simplify)] + ln(e.times)
                 is Sum              -> Ln(e)
                 else                -> throw UnsupportedOperationException()
+            }
+
+        operator fun get(base: Constant, e: Expression): Expression =
+            when {
+                base <= `0` || base == `1` -> throw IllegalArgumentException()
+                else                       -> get(e) / ln(base)
             }
     }
 }

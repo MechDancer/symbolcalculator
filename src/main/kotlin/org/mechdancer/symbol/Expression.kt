@@ -10,6 +10,9 @@ interface Expression {
     /** 将 [v] 用 [e] 代换 */
     fun substitute(v: Variable, e: Expression): Expression
 
+    override fun equals(other: Any?): Boolean
+    override fun hashCode(): Int
+
     // region 为与常数之间的运算提供优化机会
 
     operator fun plus(c: Constant): Expression = Sum[c, this]
