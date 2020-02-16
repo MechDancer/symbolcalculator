@@ -4,10 +4,10 @@ import java.text.DecimalFormat
 import kotlin.math.ln
 import kotlin.math.pow
 
-/** 常数是表达式树的叶子 */
+/** 值为 [value] 的常数 */
 inline class Constant(val value: Double)
     : Expression, Comparable<Constant> {
-    override fun d(v: Variable) = Constant(.0)
+    override fun d(v: Variable) = `0`
     override fun substitute(v: Variable, e: Expression) = this
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString(): String = formatter.format(value)

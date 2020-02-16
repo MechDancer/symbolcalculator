@@ -2,6 +2,7 @@ package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`0`
 import org.mechdancer.symbol.Constant.Companion.`1`
+import org.mechdancer.symbol.Constant.Companion.`-1`
 import org.mechdancer.symbol.Constant.Companion.ln
 
 /**
@@ -12,6 +13,7 @@ import org.mechdancer.symbol.Constant.Companion.ln
  * 基本初等函数的加、减、乘、除、复合称作初等函数
  */
 sealed class Factor : FactorExpression {
+    /** 初等函数都是一元函数，有且只有一个初等函数参数 */
     internal abstract val member: FunctionExpression
 
     /** 判断是否基本初等函数 */
@@ -21,8 +23,7 @@ sealed class Factor : FactorExpression {
     /**
      * 复合函数求导的链式法则
      *
-     * 检查函数的形式，若是基本初等函数，直接求导
-     * 否则采用复合函数求导的链式法则
+     * 检查函数的形式，基本初等函数直接求导，否则采用复合函数求导的链式法则
      */
     final override fun d(v: Variable) =
         when (member) {
@@ -34,8 +35,7 @@ sealed class Factor : FactorExpression {
     /**
      * 复合函数的代入法则
      *
-     * 检查函数的形式，若是基本初等函数，直接代入
-     * 否则将对象代入参数表达式
+     * 检查函数的形式，基本初等函数直接代入，否则展开代入
      */
     final override fun substitute(v: Variable, e: Expression) =
         when (member) {
@@ -136,7 +136,7 @@ class Exponential private constructor(
 class Ln private constructor(
     override val member: LnExpression
 ) : Factor(), BaseExpression, LnExpression {
-    override val df by lazy { Power[member, Constant.`-1`] }
+    override val df by lazy { Power[member, `-1`] }
     override fun substitute(e: Expression) = get(e)
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()

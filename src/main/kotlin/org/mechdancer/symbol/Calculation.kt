@@ -23,8 +23,10 @@ sealed class Calculation : FunctionExpression {
         }
 }
 
+// 和式合并器，不支持非顶层的 typealias，只能放在这里
 private typealias SumCollector = MutableMap<Expression, Double>
 
+// 合并算法，同类项系数相加或同底幂函数指数相加
 private fun <T : Expression> MutableMap<T, Double>.merge(e: T, b: Double) {
     compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
 }

@@ -3,7 +3,7 @@ package org.mechdancer.symbol
 import org.mechdancer.symbol.Constant.Companion.`0`
 import org.mechdancer.symbol.Constant.Companion.`1`
 
-/** 变量是表达式树的叶子 */
+/** 名为 [name] 的变量 */
 inline class Variable(private val name: String)
     : FactorExpression,
       BaseExpression,
