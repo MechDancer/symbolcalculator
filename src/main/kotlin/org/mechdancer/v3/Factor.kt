@@ -15,6 +15,7 @@ sealed class Factor : FactorExpression {
     internal abstract val member: FunctionExpression
 
     /** 判断是否基本初等函数 */
+    @Suppress("MemberVisibilityCanBePrivate")
     fun isBasic() = member is Variable
 
     /**
@@ -112,6 +113,7 @@ class Exponential private constructor(
 
     companion object Builder {
         tailrec operator fun get(b: Constant, e: Expression): Expression =
+            @Suppress("NON_TAIL_RECURSIVE_CALL")
             when {
                 b < `0`  -> throw UnsupportedOperationException()
                 b == `0` -> `0`

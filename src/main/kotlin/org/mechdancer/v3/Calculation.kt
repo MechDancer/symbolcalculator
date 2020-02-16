@@ -21,7 +21,6 @@ sealed class Calculation : FunctionExpression {
 }
 
 private typealias SumCollector = MutableMap<Expression, Double>
-private typealias PowerCollector = MutableMap<BaseExpression, Double>
 
 private fun <T : Expression> MutableMap<T, Double>.merge(e: T, b: Double) {
     compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
@@ -49,14 +48,14 @@ class Sum private constructor(
     override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as ProductExpression }.toSet(), tail / c)
 
     companion object Builder {
-        operator fun get(vararg members: Expression) = get(members.asList())
-        operator fun get(members: Collection<Expression>) =
-            when (members.size) {
+        operator fun get(vararg e: Expression) = get(e.asList())
+        operator fun get(list: Collection<Expression>) =
+            when (list.size) {
                 0    -> throw UnsupportedOperationException()
-                1    -> members.first()
+                1    -> list.first()
                 else -> {
                     val collector = mutableMapOf<Expression, Double>()
-                    for (e in members) collector += e
+                    for (e in list) collector += e
                     val tail = collector.remove(Constant.`1`) ?: .0
                     val products = collector
                         .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
@@ -128,24 +127,32 @@ class Product private constructor(
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
-        operator fun get(e: Collection<Expression>) =
-            when (e.size) {
+        operator fun get(list: Collection<Expression>) =
+            when (list.size) {
                 0    -> throw UnsupportedOperationException()
-                1    -> e.first()
+                1    -> list.first()
                 else -> {
+                    val products = mutableListOf(ProductCollector())
+                    for (e in list) when (e) {
+                        is Constant          -> products.forEach { it *= e }
+                        is ProductExpression -> products.forEach { it *= e }
+                        is Sum               -> {
+
+                        }
+                        else                 -> throw UnsupportedOperationException()
+                    }
                     TODO()
                 }
             }
 
-        private class ProductCollector {
-            private var tail = 1.0
-            private val powers = mutableMapOf<BaseExpression, Double>()
-
-            operator fun timesAssign(c: Constant) =
-                when (c) {
-                    Constant.`1` -> Unit
-                    else         -> tail *= c.value
-                }
+        private class ProductCollector private constructor(
+            private var tail: Double,
+            powers: Map<BaseExpression, Double>
+        ) {
+            private val powers = powers.toMutableMap()
+            operator fun timesAssign(c: Constant) {
+                if (c != Constant.`1`) tail *= c.value
+            }
 
             operator fun timesAssign(e: ProductExpression) {
                 fun inner(e: FactorExpression) =
@@ -164,6 +171,10 @@ class Product private constructor(
                     else                -> throw UnsupportedOperationException()
                 }
             }
+
+            constructor() : this(1.0, emptyMap())
+
+            fun clone() = ProductCollector(tail, powers)
         }
     }
 }

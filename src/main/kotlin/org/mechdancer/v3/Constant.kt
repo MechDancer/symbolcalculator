@@ -2,7 +2,6 @@ package org.mechdancer.v3
 
 import java.text.DecimalFormat
 import kotlin.math.ln
-import kotlin.math.log
 import kotlin.math.pow
 
 /** 常数是表达式树的叶子 */
@@ -20,14 +19,12 @@ inline class Constant(val value: Double)
 
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
-    infix fun log(others: Constant) = Constant(log(others.value, value))
 
     @Suppress("ObjectPropertyName")
     companion object {
         private val formatter = DecimalFormat("#.#")
 
         val NaN = Constant(Double.NaN)
-        val E = Constant(kotlin.math.E)
 
         val `0` = Constant(.0)
         val `1` = Constant(1.0)
