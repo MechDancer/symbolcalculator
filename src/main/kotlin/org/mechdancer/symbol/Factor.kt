@@ -1,8 +1,8 @@
-package org.mechdancer.v3
+package org.mechdancer.symbol
 
-import org.mechdancer.v3.Constant.Companion.`0`
-import org.mechdancer.v3.Constant.Companion.`1`
-import org.mechdancer.v3.Constant.Companion.ln
+import org.mechdancer.symbol.Constant.Companion.`0`
+import org.mechdancer.symbol.Constant.Companion.`1`
+import org.mechdancer.symbol.Constant.Companion.ln
 
 /**
  * 因子，作为积式成分而不可合并的对象

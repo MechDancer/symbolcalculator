@@ -1,7 +1,14 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.Constant.Companion.`1`
+
 /** 可微表达式 */
 interface Expression {
-    fun d(v: Variable): Expression
-    fun substitute(v: Variable, c: Constant): Expression
+    infix fun d(v: Variable): Expression
+    fun substitute(v: Variable, e: Expression): Expression
+
+    operator fun plus(c: Constant): Expression = Sum[c, this]
+    operator fun minus(c: Constant): Expression = Sum[-c, this]
+    operator fun times(c: Constant): Expression = Product[c, this]
+    operator fun div(c: Constant): Expression = Product[`1` / c, this]
 }

@@ -1,4 +1,4 @@
-package org.mechdancer.v3
+package org.mechdancer.symbol
 
 // {变量，幂因子，指数因子，对数因子} = {因子} ⊆ {积} ⊆ {函数}
 // {变量，和式，指数因子，对数因子} = {底数子函数} ⊆ {函数}

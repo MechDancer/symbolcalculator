@@ -1,286 +1,211 @@
 package org.mechdancer.symbol
 
-import org.mechdancer.symbol.Constant.Companion.One
-import org.mechdancer.symbol.Constant.Companion.Zero
+import org.mechdancer.symbol.Constant.Companion.`0`
+import org.mechdancer.symbol.Constant.Companion.`1`
 
-/** 基本运算 */
-sealed class Calculation : Expression {
-    abstract val items: Sequence<Expression>
+/** 运算 */
+sealed class Calculation : FunctionExpression {
+    protected abstract fun timesWithoutCheck(c: Constant): Expression
+    protected abstract fun divWithoutCheck(c: Constant): Expression
+
+    final override fun times(c: Constant) =
+        when (c) {
+            `0`  -> `0`
+            `1`  -> this
+            else -> timesWithoutCheck(c)
+        }
+
+    final override fun div(c: Constant) =
+        when (c) {
+            `0`  -> Constant.NaN
+            `1`  -> this
+            else -> divWithoutCheck(c)
+        }
+}
+
+private typealias SumCollector = MutableMap<Expression, Double>
+
+private fun <T : Expression> MutableMap<T, Double>.merge(e: T, b: Double) {
+    compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
 }
 
 /** 和式 */
 class Sum private constructor(
-    private val list: List<Expression>,
-    private val c: Constant
-) : Calculation() {
-    override val items
-        get() = sequence {
-            for (e in list) yield(e)
-            yield(c)
-        }
-
-    override fun d(v: Variable) =
-        sum(list.map { it.d(v) })
-
-    override fun substitute(v: Variable, c: Constant) =
-        sum(list.map { it.substitute(v, c) } + this.c)
+    internal val products: Set<ProductExpression>,
+    internal val tail: Constant
+) : Calculation(),
+    BaseExpression,
+    LnExpression {
+    override fun d(v: Variable) = get(products.map { it d v })
+    override fun substitute(v: Variable, e: Expression) = get(products.map { it.substitute(v, e) }) + tail
 
     override fun toString() =
         buildString {
-            append(list.joinToString(" + "))
-            if (c != Zero) append(" + $c")
+            append(products.first())
+            for (item in products.asSequence().drop(1))
+                append(if (item is Product && item.tail < `0`)
+                           " - ${item.toString().drop(1)}"
+                       else " + $item")
+            when {
+                tail > `0` -> append(" + $tail")
+                tail < `0` -> append(" - ${-tail}")
+            }
         }
 
-    companion object Builders {
-        fun sum(list: Iterable<Expression>) = sum(list.asSequence())
-        fun sum(vararg list: Expression) = sum(list.asSequence())
-        fun sum(sequence: Sequence<Expression>): Expression {
-            var c = .0
-            val factors =
-                mutableListOf<Factor>()
-                    .also { sequence.flattenTo(it) }
-                    // 消去并合并数值
-                    // 实际上通过加减可能得到的唯一数值是 0
-                    // 所以这一步等价于找到唯一不是 0 的数值或取 0
-                    .mapNotNull {
-                        val e = it.build()
-                        if (e is Constant) {
-                            c += e.value
-                            null
-                        } else
-                            e
+    override fun plus(c: Constant) = Sum(products, tail + c)
+    override fun minus(c: Constant) = Sum(products, tail - c)
+    override fun timesWithoutCheck(c: Constant) = Sum(products.map { (it * c) as ProductExpression }.toSet(), tail * c)
+    override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as ProductExpression }.toSet(), tail / c)
+
+    companion object Builder {
+        operator fun get(vararg e: Expression) = get(e.asList())
+        operator fun get(list: Collection<Expression>) =
+            when (list.size) {
+                0    -> throw UnsupportedOperationException()
+                1    -> list.first()
+                else -> {
+                    val collector = mutableMapOf<Expression, Double>()
+                    for (e in list) collector += e
+                    val tail = collector.remove(`1`) ?: .0
+                    val products = collector
+                        .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
+                        .toSet()
+                    when {
+                        products.isEmpty()               -> Constant(tail)
+                        tail == .0 && products.size == 1 -> products.first()
+                        else                             -> Sum(products, Constant(tail))
                     }
-            return when {
-                factors.isEmpty()            -> Constant(c)
-                c == .0 && factors.size == 1 -> factors.first()
-                else                         -> Sum(factors, Constant(c))
-            }
-        }
-
-        private fun Sequence<Expression>.flattenTo(
-            factors: MutableList<Factor>
-        ) {
-            for (item in this) when (item) {
-                Constant.NaN -> {
-                    factors.clear()
-                    factors += Factor(item)
-                    return
-                }
-                Zero         -> Unit
-                is Sum       -> item.items.flattenTo(factors)
-                else         -> {
-                    val p = Factor(item)
-                    if (factors.none { it merge p }) factors += p
                 }
             }
-        }
 
-        private class Factor(e: Expression) {
-            private var c: Double
-            private val pow: Set<Pair<Variable, Double>>
-            private val exp: Set<Pair<Double, Variable>>
-            private val log: Set<Pair<Double, Variable>>
-
-            init {
+        private operator fun SumCollector.plusAssign(e: Expression) {
+            fun inner(e: ProductExpression): Unit =
                 when (e) {
-                    is Constant    -> {
-                        c = e.value
-                        pow = emptySet()
-                        exp = emptySet()
-                        log = emptySet()
-                    }
-                    is Power       -> {
-                        c = 1.0
-                        pow = setOf(e.v to e.c.value)
-                        exp = emptySet()
-                        log = emptySet()
-                    }
-                    is Exponential -> {
-                        c = 1.0
-                        pow = emptySet()
-                        exp = setOf(e.c.value to e.v)
-                        log = emptySet()
-                    }
-                    is Logarithm   -> {
-                        c = 1.0
-                        pow = emptySet()
-                        exp = emptySet()
-                        log = setOf(e.c.value to e.v)
-                    }
-                    is Product     -> {
-                        c = e.c.value
-                        pow = mutableSetOf()
-                        exp = mutableSetOf()
-                        log = mutableSetOf()
-                        for (f in e.list) when (f) {
-                            is Power       -> pow += f.v to f.c.value
-                            is Exponential -> exp += f.c.value to f.v
-                            is Logarithm   -> log += f.c.value to f.v
-                        }
-                    }
-                    else           -> throw IllegalArgumentException()
+                    is FactorExpression -> merge(e, 1.0) // {var, factor = {pow, exp, ln}}
+                    is Product          -> merge(e.resetTail(`1`), e.tail.value)
+                    else                -> throw UnsupportedOperationException()
                 }
+
+            return when (e) {
+                `0`                  -> Unit
+                is Constant          -> merge(`1`, e.value)
+                is ProductExpression -> inner(e) // {var, product = {factor = {pow, exp, ln}, product}}
+                is Sum               -> {
+                    for (p in e.products) inner(p)
+                    merge(`1`, e.tail.value)
+                }
+                else                 -> throw UnsupportedOperationException()
             }
-
-            infix fun merge(others: Factor) =
-                (pow == others.pow && exp == others.exp && log == others.log)
-                    .also { if (it) c += others.c }
-
-            fun build(): Expression =
-                Product.product(pow.map { (v, c) -> Power.pow(v, Constant(c)) } +
-                                exp.map { (c, v) -> Exponential.exp(Constant(c), v) } +
-                                log.map { (c, v) -> Logarithm.log(Constant(c), v) } +
-                                Constant(c))
         }
     }
 }
 
 /** 积式 */
 class Product private constructor(
-    internal val list: List<BasicFunction>,
-    internal val c: Constant
-) : Calculation() {
-    override val items
-        get() = sequence {
-            for (e in list) yield(e)
-            yield(c)
-        }
+    internal val factors: Set<FactorExpression>,
+    internal val tail: Constant
+) : Calculation(),
+    ProductExpression,
+    ExponentialExpression {
+    override fun d(v: Variable): Expression =
+        factors.indices
+            .map { i ->
+                factors
+                    .mapIndexed { j, it -> if (i == j) it.d(v) else it }
+                    .let(Builder::get)
+            }
+            .let(Sum.Builder::get) * tail
 
-    override fun d(v: Variable) =
-        product(c,
-                list.indices
-                    .asSequence()
-                    .map { i ->
-                        list.asSequence()
-                            .mapIndexed { j, it -> if (i == j) it.d(v) else it }
-                            .let(Builders::product)
-                    }
-                    .let(Sum.Builders::sum))
-
-    override fun substitute(v: Variable, c: Constant) =
-        product(list.map { it.substitute(v, c) } + this.c)
+    override fun substitute(v: Variable, e: Expression) =
+        get(factors.map { it.substitute(v, e) }) * tail
 
     override fun toString() =
         buildString {
-            if (c != One) append("$c ")
-            append(list.joinToString(" "))
+            if (tail != `1`) append("$tail ")
+            append(factors.joinToString(" "))
         }
 
-    companion object Builders {
-        fun product(list: Iterable<Expression>) = product(list.asSequence())
-        fun product(vararg list: Expression) = product(list.asSequence())
-        fun product(sequence: Sequence<Expression>) =
-            mutableListOf(mutableListOf<Factor>(Factor.C(1.0)))
-                .also { sequence.flattenTo(it) }
-                .mapNotNull { it.takeUnless(Collection<*>::isEmpty)?.build() }
-                .let { it.singleOrNull() ?: Sum.sum(it) }
+    internal fun resetTail(newTail: Constant) = Product(factors, newTail)
+    override fun timesWithoutCheck(c: Constant) = resetTail(tail * c)
+    override fun divWithoutCheck(c: Constant) = resetTail(tail / c)
 
-        private fun Sequence<Expression>.flattenTo(
-            elements: MutableList<MutableList<Factor>>
-        ) {
-            for (item in this) when (item) {
-                Constant.NaN -> {
-                    elements.clear()
-                    elements += mutableListOf<Factor>(Factor.C(Double.NaN))
-                    return
-                }
-                Zero         -> {
-                    elements.clear()
-                    return
-                }
-                One          -> Unit
-                is Product   ->
-                    for (factors in elements)
-                        for (e in item.items)
-                            factors.process(e)
-                is Sum       -> {
-                    val itemsCopy = elements.toList()
-                    elements.clear()
-                    for (factors in itemsCopy) {
-                        fun copy() = factors.map(Factor::clone).toMutableList()
-                        elements.addAll(item.items.map { e ->
-                            when (e) {
-                                is Product -> copy().also { for (e1 in e.items) it.process(e1) }
-                                else       -> copy().also { it.process(e) }
+    override fun equals(other: Any?) =
+        this === other || other is Product && tail == other.tail && factors == other.factors
+
+    override fun hashCode() =
+        factors.hashCode() xor tail.hashCode()
+
+    companion object Builder {
+        operator fun get(vararg e: Expression) = get(e.asList())
+        operator fun get(list: Collection<Expression>): Expression {
+            return when (list.size) {
+                0    -> throw UnsupportedOperationException()
+                1    -> list.first()
+                else -> {
+                    val products = mutableListOf(ProductCollector())
+                    for (e in list) when (e) {
+                        `0`                  -> return `0`
+                        is Constant          -> for (p in products) p *= e
+                        is ProductExpression -> for (p in products) p *= e
+                        is Sum               -> {
+                            val copy = products.toList()
+                            products.clear()
+                            for (a in copy) {
+                                for (b in e.products)
+                                    products += a * b
+                                if (e.tail != `0`)
+                                    products += a * e.tail
                             }
-                        })
+                        }
+                        else                 -> throw UnsupportedOperationException()
                     }
+                    Sum[products.map { it.build() }]
                 }
-                else         ->
-                    for (factors in elements)
-                        factors.process(item)
             }
         }
 
-        private fun MutableList<Factor>.process(e: Expression) {
-            val p = when (e) {
-                is Constant    -> Factor.C(e.value)
-                is Power       -> Factor.Pow(e.v, e.c.value)
-                is Exponential -> Factor.Exp(e.c.value, e.v)
-                is Logarithm   -> Factor.Log(e.c.value, e.v)
-                else           -> throw IllegalArgumentException()
-            }
-            if (none { it merge p }) this += p
-        }
+        private class ProductCollector private constructor(
+            private var tail: Double,
+            powers: Map<BaseExpression, Double>
+        ) {
+            private val powers = powers.toMutableMap()
 
-        private fun MutableList<Factor>.build()
-            : Expression {
-            var c = 1.0
-            val elements = mapNotNull {
-                val e = it.build()
-                if (e is Constant) {
-                    c *= e.value
-                    null
-                } else
-                    e as BasicFunction
-            }
-            return when {
-                c == .0                        -> Zero
-                elements.isEmpty()             -> Constant(c)
-                c == 1.0 && elements.size == 1 -> elements.first()
-                else                           -> Product(elements, Constant(c))
-            }
-        }
-
-        private sealed class Factor {
-            abstract infix fun merge(others: Factor): Boolean
-            abstract fun build(): Expression
-            abstract fun clone(): Factor
-
-            class C(var value: Double) : Factor() {
-                override fun merge(others: Factor) =
-                    null != (others as? C)?.also { value *= it.value }
-
-                override fun build() =
-                    Constant(value)
-
-                override fun clone() = C(value)
+            operator fun timesAssign(c: Constant) {
+                tail *= c.value
             }
 
-            class Pow(val v: Variable, var c: Double) : Factor() {
-                override fun merge(others: Factor) =
-                    null != (others as? Pow)?.takeIf { it.v == v }?.also { c += it.c }
+            operator fun timesAssign(e: ProductExpression) {
+                fun inner(e: FactorExpression) =
+                    when (e) {
+                        is BaseExpression -> powers.merge(e, 1.0) // {var, exp, ln}
+                        is Power          -> powers.merge(e.member, e.exponent.value)
+                        else              -> throw UnsupportedOperationException()
+                    }
 
-                override fun build() =
-                    Power.pow(v, Constant(c))
-
-                override fun clone() = Pow(v, c)
+                return when (e) {
+                    is FactorExpression -> inner(e) // {var, factor = {pow, exp, ln}}
+                    is Product          -> {
+                        for (p in e.factors) inner(p)
+                        tail *= e.tail.value
+                    }
+                    else                -> throw UnsupportedOperationException()
+                }
             }
 
-            class Exp(var c: Double, val v: Variable) : Factor() {
-                override fun merge(others: Factor) =
-                    null != (others as? Exp)?.takeIf { it.v == v }?.also { c *= it.c }
+            constructor() : this(1.0, emptyMap())
 
-                override fun build() =
-                    Exponential.exp(Constant(c), v)
+            operator fun times(b: Constant) = ProductCollector(tail * b.value, powers)
+            operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
 
-                override fun clone() = Exp(c, v)
-            }
-
-            class Log(val c: Double, val v: Variable) : Factor() {
-                override fun merge(others: Factor) = false
-                override fun build() = Logarithm.log(Constant(c), v)
-                override fun clone() = Log(c, v)
+            fun build(): Expression {
+                val products = powers
+                    .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
+                    .toSet()
+                return when {
+                    powers.isEmpty()                  -> Constant(tail)
+                    tail == 1.0 && products.size == 1 -> products.first()
+                    else                              -> Product(products, Constant(tail))
+                }
             }
         }
     }
