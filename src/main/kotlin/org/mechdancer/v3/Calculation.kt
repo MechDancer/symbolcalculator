@@ -20,6 +20,8 @@ sealed class Calculation : FunctionExpression {
         }
 }
 
+private typealias SumCollector = MutableMap<Expression, Double>
+
 /** 和式 */
 class Sum private constructor(
     internal val products: Set<ProductExpression>,
@@ -27,11 +29,8 @@ class Sum private constructor(
 ) : Calculation(),
     BaseExpression,
     LnExpression {
-    override fun d(v: Variable) =
-        Builder(products.map { it d v })
-
-    override fun substitute(v: Variable, e: Expression) =
-        Builder(products.map { it.substitute(v, e) }) + tail
+    override fun d(v: Variable) = get(products.map { it d v })
+    override fun substitute(v: Variable, e: Expression) = get(products.map { it.substitute(v, e) }) + tail
 
     override fun toString() =
         buildString {
@@ -45,12 +44,41 @@ class Sum private constructor(
     override fun divWithoutCheck(c: Constant) = Sum(products.map { (it / c) as ProductExpression }.toSet(), tail / c)
 
     companion object Builder {
-        operator fun invoke(vararg members: Expression) = invoke(members.asList())
-        operator fun invoke(members: Collection<Expression>) =
+        operator fun get(vararg members: Expression) = get(members.asList())
+        operator fun get(members: Collection<Expression>) =
             when (members.size) {
                 0    -> throw UnsupportedOperationException()
                 1    -> members.first()
-                else -> TODO()
+                else -> {
+                    val collector = mutableMapOf<Expression, Double>()
+                    for (e in members) collector += e
+                    val tail = collector.remove(Constant.`1`) ?: .0
+                    val products = collector
+                        .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
+                        .toSet()
+                    when {
+                        products.isEmpty()               -> Constant(tail)
+                        tail == .0 && products.size == 1 -> products.first()
+                        else                             -> Sum(products, Constant(tail))
+                    }
+                }
+            }
+
+        private fun SumCollector.merge(e: Expression, b: Double) {
+            compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
+        }
+
+        private operator fun SumCollector.plusAssign(e: Expression): Unit =
+            when (e) {
+                Constant.`0`        -> Unit
+                is Constant         -> merge(Constant.`1`, e.value)
+                is FactorExpression -> merge(e, 1.0)
+                is Product          -> merge(e.resetTail(Constant.`1`), e.tail.value)
+                is Sum              -> {
+                    for (p in e.products) this += p
+                    this += e.tail
+                }
+                else                -> throw UnsupportedOperationException()
             }
     }
 }
@@ -67,12 +95,12 @@ class Product private constructor(
             .map { i ->
                 factors
                     .mapIndexed { j, it -> if (i == j) it.d(v) else it }
-                    .let(Builder::invoke)
+                    .let(Builder::get)
             }
-            .let(Sum.Builder::invoke) * tail
+            .let(Sum.Builder::get) * tail
 
     override fun substitute(v: Variable, e: Expression) =
-        Builder(factors.map { it.substitute(v, e) }) * tail
+        get(factors.map { it.substitute(v, e) }) * tail
 
     override fun toString() =
         buildString {
@@ -84,9 +112,15 @@ class Product private constructor(
     override fun timesWithoutCheck(c: Constant) = resetTail(tail * c)
     override fun divWithoutCheck(c: Constant) = resetTail(tail / c)
 
+    override fun equals(other: Any?) =
+        this === other || other is Product && tail == other.tail && factors == other.factors
+
+    override fun hashCode() =
+        factors.hashCode() xor tail.hashCode()
+
     companion object Builder {
-        operator fun invoke(vararg e: Expression) = invoke(e.asList())
-        operator fun invoke(e: Collection<Expression>) =
+        operator fun get(vararg e: Expression) = get(e.asList())
+        operator fun get(e: Collection<Expression>) =
             when (e.size) {
                 0    -> throw UnsupportedOperationException()
                 1    -> e.first()

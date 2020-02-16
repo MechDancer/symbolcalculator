@@ -1,5 +1,7 @@
 package org.mechdancer.v3
 
+import org.mechdancer.v3.Constant.Companion.`0`
+import org.mechdancer.v3.Constant.Companion.`1`
 import org.mechdancer.v3.Constant.Companion.ln
 
 /**
@@ -24,8 +26,8 @@ sealed class Factor : FactorExpression {
     final override fun d(v: Variable) =
         when (member) {
             v           -> df
-            is Variable -> Constant.`0`
-            else        -> Product(df, member d v)
+            is Variable -> `0`
+            else        -> Product[df, member d v]
         }
 
     /**
@@ -56,7 +58,7 @@ class Power private constructor(
     override val member: BaseExpression,
     val exponent: Constant
 ) : Factor(), ExponentialExpression {
-    override val df by lazy { get(member, exponent - Constant.`1`) * exponent }
+    override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substitute(e: Expression) = get(e, exponent)
 
     override fun equals(other: Any?) =
@@ -78,12 +80,12 @@ class Power private constructor(
                 }
 
             return when (exponent) {
-                Constant.`0` -> Constant.`1`
-                Constant.`1` -> e
-                else         -> when (e) {
+                `0`  -> `1`
+                `1`  -> e
+                else -> when (e) {
                     is Constant         -> e pow exponent
                     is FactorExpression -> simplify(e)
-                    is Product          -> Product(e.factors.map(::simplify)) * (e.tail pow exponent)
+                    is Product          -> Product[e.factors.map(::simplify)] * (e.tail pow exponent)
                     is Sum              -> Power(e, exponent)
                     else                -> throw UnsupportedOperationException()
                 }
@@ -111,17 +113,17 @@ class Exponential private constructor(
     companion object Builder {
         tailrec operator fun get(b: Constant, e: Expression): Expression =
             when {
-                b < Constant.`0`  -> throw UnsupportedOperationException()
-                b == Constant.`0` -> Constant.`0`
-                b == Constant.`1` -> Constant.`1`
-                else              -> when (e) {
+                b < `0`  -> throw UnsupportedOperationException()
+                b == `0` -> `0`
+                b == `1` -> `1`
+                else     -> when (e) {
                     is Constant    -> b pow e
                     is Variable    -> Exponential(b, e)
                     is Power       -> Exponential(b, e)
                     is Exponential -> get(b pow e.base, e.member)
                     is Ln          -> Power[e.member, ln(b)]
-                    is Product     -> Exponential(b pow e.tail, e.resetTail(Constant.`1`))
-                    is Sum         -> Product(e.products.map { get(b, it) }) * (b pow e.tail)
+                    is Product     -> Exponential(b pow e.tail, e.resetTail(`1`))
+                    is Sum         -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
                     else           -> throw UnsupportedOperationException()
                 }
             }
@@ -151,7 +153,7 @@ class Ln private constructor(
             when (e) {
                 is Constant         -> ln(e)
                 is FactorExpression -> simplify(e)
-                is Product          -> Sum(e.factors.map(::simplify)) + ln(e.tail)
+                is Product          -> Sum[e.factors.map(::simplify)] + ln(e.tail)
                 is Sum              -> Ln(e)
                 else                -> throw UnsupportedOperationException()
             }
