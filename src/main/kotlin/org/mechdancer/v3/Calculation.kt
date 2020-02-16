@@ -127,31 +127,41 @@ class Product private constructor(
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
-        operator fun get(list: Collection<Expression>) =
-            when (list.size) {
+        operator fun get(list: Collection<Expression>): Expression {
+            return when (list.size) {
                 0    -> throw UnsupportedOperationException()
                 1    -> list.first()
                 else -> {
                     val products = mutableListOf(ProductCollector())
                     for (e in list) when (e) {
-                        is Constant          -> products.forEach { it *= e }
-                        is ProductExpression -> products.forEach { it *= e }
+                        Constant.`0`         -> return Constant.`0`
+                        is Constant          -> for (p in products) p *= e
+                        is ProductExpression -> for (p in products) p *= e
                         is Sum               -> {
-
+                            val copy = products.toList()
+                            products.clear()
+                            for (a in copy) {
+                                for (b in e.products)
+                                    products += a * b
+                                if (e.tail != Constant.`0`)
+                                    products += a * e.tail
+                            }
                         }
                         else                 -> throw UnsupportedOperationException()
                     }
-                    TODO()
+                    Sum[products.map { it.build() }]
                 }
             }
+        }
 
         private class ProductCollector private constructor(
             private var tail: Double,
             powers: Map<BaseExpression, Double>
         ) {
             private val powers = powers.toMutableMap()
+
             operator fun timesAssign(c: Constant) {
-                if (c != Constant.`1`) tail *= c.value
+                tail *= c.value
             }
 
             operator fun timesAssign(e: ProductExpression) {
@@ -174,7 +184,19 @@ class Product private constructor(
 
             constructor() : this(1.0, emptyMap())
 
-            fun clone() = ProductCollector(tail, powers)
+            operator fun times(b: Constant) = ProductCollector(tail * b.value, powers)
+            operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
+
+            fun build(): Expression {
+                val products = powers
+                    .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
+                    .toSet()
+                return when {
+                    powers.isEmpty()                  -> Constant(tail)
+                    tail == 1.0 && products.size == 1 -> products.first()
+                    else                              -> Product(products, Constant(tail))
+                }
+            }
         }
     }
 }
