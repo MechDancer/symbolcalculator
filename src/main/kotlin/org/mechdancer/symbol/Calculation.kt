@@ -7,6 +7,7 @@ import org.mechdancer.symbol.Constant.Companion.`1`
 sealed class Calculation : FunctionExpression {
     protected abstract fun timesWithoutCheck(c: Constant): Expression
     protected abstract fun divWithoutCheck(c: Constant): Expression
+    protected abstract fun format(which: (Expression) -> String): String
 
     final override fun times(c: Constant) =
         when (c) {
@@ -21,6 +22,9 @@ sealed class Calculation : FunctionExpression {
             `1`  -> this
             else -> divWithoutCheck(c)
         }
+
+    final override fun toString() = format(Expression::toString)
+    final override fun toTex() = format(Expression::toTex)
 }
 
 // 和式合并器，不支持非顶层的 typealias，只能放在这里
@@ -40,40 +44,24 @@ class Sum private constructor(
     LnExpression {
     override fun d(v: Variable) = get(products.map { it d v })
     override fun substitute(from: Expression, to: Expression) =
-        get(products.map { it.substitute(from, to) }) + tail
+        if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
 
     override fun equals(other: Any?) =
         this === other || other is Sum && tail == other.tail && products == other.products
 
     override fun hashCode() = products.hashCode() xor tail.hashCode()
 
-    override fun toString() =
+    override fun format(which: (Expression) -> String) =
         buildString {
-            append(products.first())
+            append(which(products.first()))
             for (item in products.asSequence().drop(1))
-                append(
-                    if (item is Product && item.times < `0`)
-                        " - ${item.toString().drop(1)}"
-                    else " + $item"
-                )
+                if (item is Product && item.times < `0`)
+                    append(" - ${which(item).drop(1)}")
+                else
+                    append(" + ${which(item)}")
             when {
-                tail > `0` -> append(" + $tail")
-                tail < `0` -> append(" - ${-tail}")
-            }
-        }
-
-    override fun toTex(): Tex =
-        buildString {
-            append(products.first().toTex())
-            for (item in products.asSequence().drop(1))
-                append(
-                    if (item is Product && item.times < `0`)
-                        " - ${item.toTex().drop(1)}"
-                    else " + ${item.toTex()}"
-                )
-            when {
-                tail > `0` -> append(" + ${tail.toTex()}")
-                tail < `0` -> append(" - ${(-tail).toTex()}")
+                tail > `0` -> append(" + ${which(tail)}")
+                tail < `0` -> append(" - ${which(-tail)}")
             }
         }
 
@@ -142,23 +130,17 @@ class Product private constructor(
             .let(Sum.Builder::get) * times
 
     override fun substitute(from: Expression, to: Expression) =
-        get(factors.map { it.substitute(from, to) }) * times
+        if (this == from) to else get(factors.map { it.substitute(from, to) }) * times
 
     override fun equals(other: Any?) =
         this === other || other is Product && times == other.times && factors == other.factors
 
     override fun hashCode() = factors.hashCode() xor times.hashCode()
 
-    override fun toString() =
+    override fun format(which: (Expression) -> String) =
         buildString {
-            if (times != `1`) append("$times ")
-            append(factors.joinToString(" "))
-        }
-
-    override fun toTex(): Tex =
-        buildString {
-            if (times != `1`) append("${times.toTex()} ")
-            append(factors.joinToString(" ") { it.toTex() })
+            if (times != `1`) append("${which(times)} ")
+            append(factors.joinToString(" ", transform = which))
         }
 
     internal fun resetTimes(new: Constant) = Product(factors, new)

@@ -40,7 +40,11 @@ sealed class Factor : FactorExpression {
      * 检查函数的形式，基本初等函数直接代入，否则展开代入
      */
     final override fun substitute(from: Expression, to: Expression) =
-        if (member == from) substitute(to) else substitute(member.substitute(from, to))
+        when (from) {
+            this   -> to
+            member -> substitute(to)
+            else   -> substitute(member.substitute(from, to))
+        }
 
     /** 对链式法则展开一层 */
     protected abstract val df: Expression
@@ -118,7 +122,7 @@ class Exponential private constructor(
     internal operator fun component1() = base
     internal operator fun component2() = member
     override fun toString() = "$base^$parameterString"
-    override fun toTex(): Tex = "{$base}^{$member}"
+    override fun toTex(): Tex = "{${base.toTex()}}^{${member.toTex()}}"
 
     companion object Builder {
         tailrec operator fun get(b: Constant, e: Expression): Expression =
@@ -150,7 +154,7 @@ class Ln private constructor(
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()
     override fun toString() = "ln$parameterString"
-    override fun toTex(): Tex = "\\ln $parameterString"
+    override fun toTex(): Tex = "\\ln $parameterTex"
 
     companion object Builder {
         private fun simplify(f: FactorExpression) =

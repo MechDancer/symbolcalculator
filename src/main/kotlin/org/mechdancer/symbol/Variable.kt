@@ -12,5 +12,5 @@ inline class Variable(private val name: String)
     override fun d(v: Variable) = if (this == v) `1` else `0`
     override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
     override fun toString() = name
-    override fun toTex(): Tex = toString()
+    override fun toTex(): Tex = name
 }

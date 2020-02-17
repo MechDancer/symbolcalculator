@@ -7,29 +7,17 @@ import kotlin.math.abs
 
 @Suppress("MemberVisibilityCanBePrivate")
 object TexRender {
-    val baseDictionary = File(System.getProperty("user.home"), ".symbol").apply {
-        if (!exists())
-            mkdir()
-    }
+    val baseDictionary = mk(File(System.getProperty("user.home"), ".symbol"))
+    val dviDictionary = mk(File(baseDictionary, "dvi"))
+    val svgDictionary = mk(File(baseDictionary, "svg"))
 
-    val dviDictionary = File(baseDictionary, "dvi").apply {
-        if (!exists())
-            mkdir()
-    }
-    val svgDictionary = File(baseDictionary, "svg").apply {
-        if (!exists())
-            mkdir()
-    }
+    fun render(expression: Expression) =
+        File(dviDictionary, "${abs(expression.hashCode())}.tex")
+            .apply { writeText(template(expression.toTex())) }
+            .let(::dvi)
+            .let(::svg)
 
-    private fun writeTexFile(expression: Expression): File {
-        val tex = File(dviDictionary, "${abs(expression.hashCode())}.tex").apply {
-            if (exists())
-                delete()
-            createNewFile()
-        }
-        tex.writeText(template(expression.toTex()))
-        return tex
-    }
+    private fun mk(f: File) = f.apply { if (!exists()) mkdir() }
 
     private fun dvi(tex: File): File {
         Runtime.getRuntime().exec(
@@ -38,9 +26,9 @@ object TexRender {
                 "-interaction=batchmode",
                 "-halt-on-error",
                 "-output-directory=${dviDictionary.absolutePath}",
-                tex.absolutePath
-            )
-        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }.waitFor()
+                tex.absolutePath)
+        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
+            .waitFor()
         return tex.absolutePath.replace("tex", "dvi").let(::File)
     }
 
@@ -54,15 +42,11 @@ object TexRender {
                 "-v",
                 "0",
                 "-o",
-                new.absolutePath
-            )
-        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }.waitFor()
+                new.absolutePath)
+        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
+            .waitFor()
         return new
     }
-
-    fun render(expression: Expression) =
-        svg(dvi(writeTexFile(expression)))
-
 
     private fun template(tex: Tex): Tex = """
         \documentclass[preview]{standalone}

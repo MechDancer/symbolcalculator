@@ -7,7 +7,7 @@ import kotlin.math.pow
 /** 值为 [value] 的常数 */
 inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     override fun d(v: Variable) = `0`
-    override fun substitute(from: Expression, to: Expression) = this
+    override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString(): String = formatter.format(value)
 
@@ -19,14 +19,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
 
-    fun reciprocal() = Constant(1 / value)
-
-
-    override fun toTex(): Tex = value.toString().split('.').let { (a, b) ->
-        if (b.all { it == '0' })
-            a
-        else "$a$b"
-    }
+    override fun toTex(): Tex = toString()
 
     @Suppress("ObjectPropertyName")
     companion object {
@@ -40,4 +33,8 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
         fun ln(x: Constant) = Constant(ln(x.value))
     }
+}
+
+fun main() {
+    println(Constant(1.0))
 }
