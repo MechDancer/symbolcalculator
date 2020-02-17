@@ -35,12 +35,31 @@ fun Expression.substitute(block: ValueCalculator.() -> Unit) =
 
 // 定义变量
 
-class VariableProperty : ReadOnlyProperty<Any?, Variable> {
+class VariableProperty
+    : ReadOnlyProperty<Any?, Variable> {
     override fun getValue(thisRef: Any?, property: KProperty<*>) =
         Variable(property.name)
 }
 
-val variable get() = VariableProperty()
+val variable
+    get() = VariableProperty()
+
+class VariableVariableSpaceProperty(
+    private val names: Set<String>,
+    private val range: IntRange)
+    : ReadOnlyProperty<Any?, VariableSpace> {
+    override fun getValue(thisRef: Any?, property: KProperty<*>) =
+        when {
+            names.isEmpty() -> range.map { "${property.name}$it" }
+            else            -> names.flatMap { name -> range.map { i -> "$name$i" } }
+        }.map(::Variable).toSet().let(::VariableSpace)
+}
+
+fun variableSpace(names: Set<String> = emptySet(), range: IntRange) =
+    VariableVariableSpaceProperty(names, range)
+
+fun variables(vararg names: String) =
+    VariableSpace(names.map(::Variable).toSet())
 
 // 表达式运算
 
