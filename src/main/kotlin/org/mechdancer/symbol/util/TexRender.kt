@@ -40,7 +40,7 @@ object TexRender {
                 "-output-directory=${dviDictionary.absolutePath}",
                 tex.absolutePath
             )
-        ).also { println(it.errorStream.bufferedReader().readText()) }.waitFor()
+        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }.waitFor()
         return tex.absolutePath.replace("tex", "dvi").let(::File)
     }
 
@@ -56,11 +56,11 @@ object TexRender {
                 "-o",
                 new.absolutePath
             )
-        ).also { println(it.errorStream.bufferedReader().readText()) }.waitFor()
+        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }.waitFor()
         return new
     }
 
-    fun render(expression: Expression)=
+    fun render(expression: Expression) =
         svg(dvi(writeTexFile(expression)))
 
 
