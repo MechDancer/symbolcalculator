@@ -38,7 +38,7 @@ sealed class Factor : FactorExpression {
      * 检查函数的形式，基本初等函数直接代入，否则展开代入
      */
     final override fun substitute(from: Expression, to: Expression) =
-        if (member == from) substitute(from) else substitute(member.substitute(from, to))
+        if (member == from) substitute(to) else substitute(member.substitute(from, to))
 
     /** 对链式法则展开一层 */
     protected abstract val df: Expression
