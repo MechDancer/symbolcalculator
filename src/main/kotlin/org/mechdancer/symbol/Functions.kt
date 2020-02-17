@@ -1,8 +1,8 @@
+@file:Suppress("FunctionName")
+
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`-1`
-import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KProperty
 
 // 求导
 
@@ -25,41 +25,13 @@ class ValueCalculator internal constructor(e: Expression) {
         expression = expression.substitute(from, to)
     }
 
-    operator fun set(from: Expression, x: Number) {
-        expression = expression.substitute(from, Constant(x.toDouble()))
+    operator fun set(from: Expression, to: Number) {
+        expression = expression.substitute(from, Constant(to.toDouble()))
     }
 }
 
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
-
-// 定义变量
-
-class VariableProperty
-    : ReadOnlyProperty<Any?, Variable> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>) =
-        Variable(property.name)
-}
-
-val variable
-    get() = VariableProperty()
-
-class VariableVariableSpaceProperty(
-    private val names: Set<String>,
-    private val range: IntRange)
-    : ReadOnlyProperty<Any?, VariableSpace> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>) =
-        when {
-            names.isEmpty() -> range.map { "${property.name}$it" }
-            else            -> names.flatMap { name -> range.map { i -> "$name$i" } }
-        }.map(::Variable).toSet().let(::VariableSpace)
-}
-
-fun variableSpace(names: Set<String> = emptySet(), range: IntRange) =
-    VariableVariableSpaceProperty(names, range)
-
-fun variables(vararg names: String) =
-    VariableSpace(names.map(::Variable).toSet())
 
 // 表达式运算
 
@@ -90,6 +62,11 @@ infix fun Expression.pow(n: Constant) =
 
 infix fun Constant.pow(e: Expression) = Exponential[this, e]
 infix fun Number.pow(e: Expression) = Exponential[Constant(toDouble()), e]
+
+infix fun Expression.`^`(n: Number) = pow(n)
+infix fun Expression.`^`(n: Constant) = pow(n)
+infix fun Constant.`^`(e: Expression) = pow(e)
+infix fun Number.`^`(e: Expression) = pow(e)
 
 fun ln(e: Expression) = Ln[e]
 fun log(base: Constant) = { e: Expression -> Ln[base, e] }

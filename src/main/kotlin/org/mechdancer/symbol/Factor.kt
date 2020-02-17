@@ -67,23 +67,24 @@ class Power private constructor(
     override fun toString() = "$parameterString^$exponent"
 
     companion object Builder {
-        operator fun get(e: Expression, exponent: Constant): Expression {
+        operator fun get(b: Expression, e: Constant): Expression {
             fun simplify(f: FunctionExpression): Expression =
                 when (f) {
-                    is BaseExpression -> Power(f, exponent)
-                    is Power          -> get(f.member, exponent pow exponent)
-                    is Exponential    -> Exponential[f.base, get(f.member, exponent)]
+                    is BaseExpression -> Power(f, e)
+                    is Power          -> get(f.member, e pow e)
+                    is Exponential    -> Exponential[f.base, get(f.member, e)]
                     else              -> throw UnsupportedOperationException()
                 }
 
-            return when (exponent) {
+            return when (e) {
                 `0`  -> `1`
-                `1`  -> e
-                else -> when (e) {
-                    is Constant         -> e pow exponent
-                    is FactorExpression -> simplify(e)
-                    is Product          -> Product[e.factors.map(::simplify)] * (e.times pow exponent)
-                    is Sum              -> Power(e, exponent)
+                `1`  -> b
+                else -> when (b) {
+                    `0`                 -> `0`
+                    is Constant         -> b pow e
+                    is FactorExpression -> simplify(b)
+                    is Product          -> Product[b.factors.map(::simplify)] * (b.times pow e)
+                    is Sum              -> Power(b, e)
                     else                -> throw UnsupportedOperationException()
                 }
             }
