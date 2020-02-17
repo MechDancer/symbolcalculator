@@ -13,6 +13,8 @@ interface Expression {
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
 
+    fun toTex(): Tex
+
     // region 为与常数之间的运算提供优化机会
 
     operator fun plus(c: Constant): Expression = Sum[c, this]

@@ -50,12 +50,29 @@ class Sum private constructor(
         buildString {
             append(products.first())
             for (item in products.asSequence().drop(1))
-                append(if (item is Product && item.times < `0`)
-                           " - ${item.toString().drop(1)}"
-                       else " + $item")
+                append(
+                    if (item is Product && item.times < `0`)
+                        " - ${item.toString().drop(1)}"
+                    else " + $item"
+                )
             when {
                 tail > `0` -> append(" + $tail")
                 tail < `0` -> append(" - ${-tail}")
+            }
+        }
+
+    override fun toTex(): Tex =
+        buildString {
+            append(products.first().toTex())
+            for (item in products.asSequence().drop(1))
+                append(
+                    if (item is Product && item.times < `0`)
+                        " - ${item.toTex().drop(1)}"
+                    else " + ${item.toTex()}"
+                )
+            when {
+                tail > `0` -> append(" + ${tail.toTex()}")
+                tail < `0` -> append(" - ${(-tail).toTex()}")
             }
         }
 
@@ -136,6 +153,12 @@ class Product private constructor(
         buildString {
             if (times != `1`) append("$times ")
             append(factors.joinToString(" "))
+        }
+
+    override fun toTex(): Tex =
+        buildString {
+            if (times != `1`) append("${times.toTex()} ")
+            append(factors.joinToString(" ") { it.toTex() })
         }
 
     internal fun resetTimes(new: Constant) = Product(factors, new)

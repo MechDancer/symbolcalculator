@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`0`
@@ -17,8 +19,8 @@ sealed class Factor : FactorExpression {
     internal abstract val member: FunctionExpression
 
     /** 判断是否基本初等函数 */
-    @Suppress("MemberVisibilityCanBePrivate")
-    fun isBasic() = member is Variable
+    val isBasic
+        get() = member is Variable
 
     /**
      * 复合函数求导的链式法则
@@ -51,7 +53,10 @@ sealed class Factor : FactorExpression {
     protected abstract fun substitute(e: Expression): Expression
 
     /** 对复合函数的成分加括号 */
-    protected val parameterString get() = if (isBasic()) "$member" else "($member)"
+    protected val parameterString get() = if (isBasic) "$member" else "($member)"
+
+    /** 对复合函数的成分加括号 */
+    protected val parameterTex get() = if (isBasic) member.toTex() else "(${member.toTex()})"
 }
 
 /** 幂因子 */
@@ -69,6 +74,12 @@ class Power private constructor(
     internal operator fun component1() = member
     internal operator fun component2() = exponent
     override fun toString() = "$parameterString^$exponent"
+    override fun toTex(): Tex =
+        when (exponent) {
+            Constant(.5)  -> "\\sqrt{${member.toTex()}}"
+            Constant(-.5) -> "\\frac{1}{\\sqrt{${member.toTex()}}}"
+            else          -> "{$parameterTex}^{${exponent.toTex()}}"
+        }
 
     companion object Builder {
         operator fun get(e: Expression, exponent: Constant): Expression {
@@ -110,6 +121,7 @@ class Exponential private constructor(
     internal operator fun component1() = base
     internal operator fun component2() = member
     override fun toString() = "$base^$parameterString"
+    override fun toTex(): Tex = "{$base}^{$member}"
 
     companion object Builder {
         tailrec operator fun get(b: Constant, e: Expression): Expression =
@@ -141,6 +153,7 @@ class Ln private constructor(
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()
     override fun toString() = "ln$parameterString"
+    override fun toTex(): Tex = "\\ln $parameterString"
 
     companion object Builder {
         private fun simplify(f: FactorExpression) =

@@ -5,8 +5,7 @@ import kotlin.math.ln
 import kotlin.math.pow
 
 /** 值为 [value] 的常数 */
-inline class Constant(val value: Double)
-    : Expression, Comparable<Constant> {
+inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     override fun d(v: Variable) = `0`
     override fun substitute(v: Variable, e: Expression) = this
     override fun compareTo(other: Constant) = value.compareTo(other.value)
@@ -21,6 +20,13 @@ inline class Constant(val value: Double)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
 
     fun reciprocal() = Constant(1 / value)
+
+
+    override fun toTex(): Tex = value.toString().split('.').let { (a, b) ->
+        if (b.all { it == '0' })
+            a
+        else "$a$b"
+    }
 
     @Suppress("ObjectPropertyName")
     companion object {

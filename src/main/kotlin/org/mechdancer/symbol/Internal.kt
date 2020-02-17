@@ -22,3 +22,5 @@ internal interface ExponentialExpression : FunctionExpression
 
 /** 对数表达式 */
 internal interface LnExpression : FunctionExpression
+
+internal typealias Tex = String
