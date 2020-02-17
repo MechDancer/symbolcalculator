@@ -10,6 +10,6 @@ inline class Variable(private val name: String)
       ExponentialExpression,
       LnExpression {
     override fun d(v: Variable) = if (this == v) `1` else `0`
-    override fun substitute(v: Variable, e: Expression) = if (this == v) e else this
+    override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
     override fun toString() = name
 }

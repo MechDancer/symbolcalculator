@@ -21,12 +21,12 @@ class ValueCalculator internal constructor(e: Expression) {
     var expression = e
         private set
 
-    operator fun set(v: Variable, x: Expression) {
-        expression = expression.substitute(v, x)
+    operator fun set(from: Expression, to: Expression) {
+        expression = expression.substitute(from, to)
     }
 
-    operator fun set(v: Variable, x: Number) {
-        expression = expression.substitute(v, Constant(x.toDouble()))
+    operator fun set(from: Expression, x: Number) {
+        expression = expression.substitute(from, Constant(x.toDouble()))
     }
 }
 
