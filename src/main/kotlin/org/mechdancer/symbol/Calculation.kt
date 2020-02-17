@@ -42,7 +42,8 @@ class Sum private constructor(
 ) : Calculation(),
     BaseExpression,
     LnExpression {
-    override fun d(v: Variable) = get(products.map { it d v })
+    override fun d() = get(products.map(Expression::d))
+
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
 
@@ -120,11 +121,11 @@ class Product private constructor(
 ) : Calculation(),
     ProductExpression,
     ExponentialExpression {
-    override fun d(v: Variable): Expression =
+    override fun d(): Expression =
         factors.indices
             .map { i ->
                 factors
-                    .mapIndexed { j, it -> if (i == j) it.d(v) else it }
+                    .mapIndexed { j, it -> if (i == j) it.d() else it }
                     .let(Builder::get)
             }
             .let(Sum.Builder::get) * times
@@ -140,7 +141,10 @@ class Product private constructor(
     override fun format(which: (Expression) -> String) =
         buildString {
             if (times != `1`) append("${which(times)} ")
-            append(factors.joinToString(" ", transform = which))
+            val groups = factors.groupBy { it.differentialOrder != 0 }
+            groups[false]?.let { append(it.joinToString(" ", transform = which)) }
+            if (groups.size == 2) append(" ")
+            groups[true]?.let { append(it.joinToString(" ", transform = which)) }
         }
 
     internal fun resetTimes(new: Constant) = Product(factors, new)
@@ -175,6 +179,14 @@ class Product private constructor(
                 }
             }
         }
+
+        // 作为导数算子的阶数
+        private val ProductExpression.differentialOrder
+            get() = when (this) {
+                is Differential -> -1
+                is Power        -> asDifferential()?.second ?: 0
+                else            -> 0
+            }
 
         private class ProductCollector private constructor(
             private var tail: Double,
@@ -214,6 +226,9 @@ class Product private constructor(
                     .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
                     .toSet()
                 return when {
+                    // 包含不同的正负导算子
+                    products.any { it.differentialOrder > 0 } && products.any { it.differentialOrder < 0 }
+                                                      -> `0`
                     powers.isEmpty()                  -> Constant(tail)
                     tail == 1.0 && products.size == 1 -> products.first()
                     else                              -> Product(products, Constant(tail))

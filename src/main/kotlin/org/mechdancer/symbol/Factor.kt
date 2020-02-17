@@ -22,17 +22,7 @@ sealed class Factor : FactorExpression {
     val isBasic
         get() = member is Variable
 
-    /**
-     * 复合函数求导的链式法则
-     *
-     * 检查函数的形式，基本初等函数直接求导，否则采用复合函数求导的链式法则
-     */
-    final override fun d(v: Variable) =
-        when (member) {
-            v           -> df
-            is Variable -> `0`
-            else        -> Product[df, member d v]
-        }
+    override fun d() = Product[df, member.d()]
 
     /**
      * 复合函数的代入法则
@@ -64,6 +54,11 @@ class Power private constructor(
     override val member: BaseExpression,
     val exponent: Constant
 ) : Factor(), ExponentialExpression {
+    init {
+        // 作为导数算子，阶数只能是整数
+        if (member is Differential) require(exponent.value == exponent.value.toInt().toDouble())
+    }
+
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substitute(e: Expression) = get(e, exponent)
 
@@ -71,8 +66,6 @@ class Power private constructor(
         this === other || other is Power && exponent == other.exponent && member == other.member
 
     override fun hashCode() = member.hashCode() xor exponent.hashCode()
-    internal operator fun component1() = member
-    internal operator fun component2() = exponent
     override fun toString() = "$parameterString^$exponent"
     override fun toTex(): Tex =
         when (exponent) {
@@ -80,6 +73,9 @@ class Power private constructor(
             Constant(-.5) -> "\\frac{1}{\\sqrt{${member.toTex()}}}"
             else          -> "{$parameterTex}^{${exponent.toTex()}}"
         }
+
+    fun asDifferential() =
+        (member as? Differential)?.let { it to -exponent.value.toInt() }
 
     companion object Builder {
         operator fun get(b: Expression, e: Constant): Expression {
@@ -119,14 +115,11 @@ class Exponential private constructor(
         this === other || other is Exponential && base == other.base && member == other.member
 
     override fun hashCode() = base.hashCode() xor member.hashCode()
-    internal operator fun component1() = base
-    internal operator fun component2() = member
     override fun toString() = "$base^$parameterString"
     override fun toTex(): Tex = "{${base.toTex()}}^{${member.toTex()}}"
 
     companion object Builder {
-        tailrec operator fun get(b: Constant, e: Expression): Expression =
-            @Suppress("NON_TAIL_RECURSIVE_CALL")
+        operator fun get(b: Constant, e: Expression): Expression =
             when {
                 b < `0`  -> throw IllegalArgumentException()
                 b == `0` -> `0`
@@ -135,7 +128,7 @@ class Exponential private constructor(
                     is Constant    -> b pow e
                     is Variable    -> Exponential(b, e)
                     is Power       -> Exponential(b, e)
-                    is Exponential -> get(b pow e.base, e.member)
+                    is Exponential -> Exponential(b pow e.base, e.member)
                     is Ln          -> Power[e.member, ln(b)]
                     is Product     -> Exponential(b pow e.times, e.resetTimes(`1`))
                     is Sum         -> Product[e.products.map { get(b, it) }] * (b pow e.tail)

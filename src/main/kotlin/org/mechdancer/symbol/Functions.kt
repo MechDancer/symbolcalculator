@@ -6,14 +6,7 @@ import org.mechdancer.symbol.Constant.Companion.`-1`
 
 // 求导
 
-inline class DExpression(private val expression: Expression) {
-    operator fun div(v: DExpression) =
-        (v.expression as? Variable)
-            ?.let { expression d it }
-        ?: throw UnsupportedOperationException()
-}
-
-fun d(e: Expression) = DExpression(e)
+fun d(e: Expression) = e.d()
 
 // 代入
 

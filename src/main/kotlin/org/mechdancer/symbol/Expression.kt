@@ -4,8 +4,8 @@ import org.mechdancer.symbol.Constant.Companion.`1`
 
 /** 可微表达式 */
 interface Expression {
-    /** 对 [v] 求偏导 */
-    infix fun d(v: Variable): Expression
+    /** 微分 */
+    fun d(): Expression
 
     /** 将 [from] 用 [to] 代换 */
     fun substitute(from: Expression, to: Expression): Expression
@@ -13,6 +13,7 @@ interface Expression {
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
 
+    override fun toString(): String
     fun toTex(): Tex
 
     // region 为与常数之间的运算提供优化机会

@@ -14,6 +14,7 @@ fun main() {
         println(dx)
         println(dy)
         println(dxy)
+        println(d(f))
 
         println(f.substitute { this[x] = 4; this[y] = 10 })
     }
@@ -23,14 +24,14 @@ fun main() {
         val y by variable
         val f = sqrt((x pow 2) + (y pow 2))
         println(f)
-        println(f d x)
+        println(d(f) / d(x))
     }
     println()
     run {
         val x by variable
         val f = ln(9 * x - 7)
         println(f)
-        println(f d x)
+        println(d(f) / d(x))
     }
     println()
     run {
