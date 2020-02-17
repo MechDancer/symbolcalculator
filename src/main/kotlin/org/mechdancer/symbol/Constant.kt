@@ -7,7 +7,7 @@ import kotlin.math.pow
 /** 值为 [value] 的常数 */
 inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     override fun d(v: Variable) = `0`
-    override fun substitute(v: Variable, e: Expression) = this
+    override fun substitute(from: Expression, to: Expression) = this
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString(): String = formatter.format(value)
 

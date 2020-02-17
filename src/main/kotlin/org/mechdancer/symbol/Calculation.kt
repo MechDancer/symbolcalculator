@@ -39,7 +39,8 @@ class Sum private constructor(
     BaseExpression,
     LnExpression {
     override fun d(v: Variable) = get(products.map { it d v })
-    override fun substitute(v: Variable, e: Expression) = get(products.map { it.substitute(v, e) }) + tail
+    override fun substitute(from: Expression, to: Expression) =
+        get(products.map { it.substitute(from, to) }) + tail
 
     override fun equals(other: Any?) =
         this === other || other is Sum && tail == other.tail && products == other.products
@@ -140,14 +141,13 @@ class Product private constructor(
             }
             .let(Sum.Builder::get) * times
 
-    override fun substitute(v: Variable, e: Expression) =
-        get(factors.map { it.substitute(v, e) }) * times
+    override fun substitute(from: Expression, to: Expression) =
+        get(factors.map { it.substitute(from, to) }) * times
 
     override fun equals(other: Any?) =
         this === other || other is Product && times == other.times && factors == other.factors
 
-    override fun hashCode() =
-        factors.hashCode() xor times.hashCode()
+    override fun hashCode() = factors.hashCode() xor times.hashCode()
 
     override fun toString() =
         buildString {

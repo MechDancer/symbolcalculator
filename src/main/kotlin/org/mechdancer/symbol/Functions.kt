@@ -1,8 +1,8 @@
+@file:Suppress("FunctionName")
+
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`-1`
-import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KProperty
 
 // 求导
 
@@ -21,26 +21,17 @@ class ValueCalculator internal constructor(e: Expression) {
     var expression = e
         private set
 
-    operator fun set(v: Variable, x: Expression) {
-        expression = expression.substitute(v, x)
+    operator fun set(from: Expression, to: Expression) {
+        expression = expression.substitute(from, to)
     }
 
-    operator fun set(v: Variable, x: Number) {
-        expression = expression.substitute(v, Constant(x.toDouble()))
+    operator fun set(from: Expression, to: Number) {
+        expression = expression.substitute(from, Constant(to.toDouble()))
     }
 }
 
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
-
-// 定义变量
-
-class VariableProperty : ReadOnlyProperty<Any?, Variable> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>) =
-        Variable(property.name)
-}
-
-val variable get() = VariableProperty()
 
 // 表达式运算
 
@@ -71,6 +62,11 @@ infix fun Expression.pow(n: Constant) =
 
 infix fun Constant.pow(e: Expression) = Exponential[this, e]
 infix fun Number.pow(e: Expression) = Exponential[Constant(toDouble()), e]
+
+infix fun Expression.`^`(n: Number) = pow(n)
+infix fun Expression.`^`(n: Constant) = pow(n)
+infix fun Constant.`^`(e: Expression) = pow(e)
+infix fun Number.`^`(e: Expression) = pow(e)
 
 fun ln(e: Expression) = Ln[e]
 fun log(base: Constant) = { e: Expression -> Ln[base, e] }

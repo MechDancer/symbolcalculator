@@ -7,8 +7,8 @@ interface Expression {
     /** 对 [v] 求偏导 */
     infix fun d(v: Variable): Expression
 
-    /** 将 [v] 用 [e] 代换 */
-    fun substitute(v: Variable, e: Expression): Expression
+    /** 将 [from] 用 [to] 代换 */
+    fun substitute(from: Expression, to: Expression): Expression
 
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
