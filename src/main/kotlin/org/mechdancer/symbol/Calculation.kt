@@ -2,6 +2,7 @@ package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`0`
 import org.mechdancer.symbol.Constant.Companion.`1`
+import kotlin.math.sign
 
 /** 运算 */
 sealed class Calculation : FunctionExpression {
@@ -28,10 +29,10 @@ sealed class Calculation : FunctionExpression {
 }
 
 // 和式合并器，不支持非顶层的 typealias，只能放在这里
-private typealias SumCollector = MutableMap<Expression, Double>
+private typealias SumCollector = HashMap<Expression, Double>
 
 // 合并算法，同类项系数相加或同底幂函数指数相加
-private fun <T : Expression> MutableMap<T, Double>.merge(e: T, b: Double) {
+private fun <T : Expression> HashMap<T, Double>.merge(e: T, b: Double) {
     compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
 }
 
@@ -78,7 +79,7 @@ class Sum private constructor(
                 0    -> throw UnsupportedOperationException()
                 1    -> list.first()
                 else -> {
-                    val collector = mutableMapOf<Expression, Double>()
+                    val collector = hashMapOf<Expression, Double>()
                     for (e in list) collector += e
                     val tail = collector.remove(`1`) ?: .0
                     val products = collector
@@ -93,17 +94,17 @@ class Sum private constructor(
             }
 
         private operator fun SumCollector.plusAssign(e: Expression) {
-            fun inner(e: ProductExpression): Unit =
-                when (e) {
-                    is FactorExpression -> merge(e, 1.0) // {var, factor = {pow, exp, ln}}
-                    is Product          -> merge(e.resetTimes(`1`), e.times.value)
+            fun inner(p: ProductExpression): Unit =
+                when (p) {
+                    is FactorExpression -> merge(p, 1.0) // {var, factor = d_, {pow, exp, ln}}
+                    is Product          -> merge(p.resetTimes(`1`), p.times.value)
                     else                -> throw UnsupportedOperationException()
                 }
 
             return when (e) {
                 `0`                  -> Unit
                 is Constant          -> merge(`1`, e.value)
-                is ProductExpression -> inner(e) // {var, product = {factor = {pow, exp, ln}, product}}
+                is ProductExpression -> inner(e) // {var, product = {factor = d_, {pow, exp, ln}, product}}
                 is Sum               -> {
                     for (p in e.products) inner(p)
                     merge(`1`, e.tail.value)
@@ -161,16 +162,15 @@ class Product private constructor(
                     val products = mutableListOf(ProductCollector())
                     for (e in list) when (e) {
                         `0`                  -> return `0`
-                        is Constant          -> for (p in products) p *= e
-                        is ProductExpression -> for (p in products) p *= e
+                        `1`                  -> Unit
+                        is Constant          -> products.removeIf { it *= e; it.isZero() }
+                        is ProductExpression -> products.removeIf { it *= e; it.isZero() }
                         is Sum               -> {
                             val copy = products.toList()
                             products.clear()
                             for (a in copy) {
-                                for (b in e.products)
-                                    products += a * b
-                                if (e.tail != `0`)
-                                    products += a * e.tail
+                                products += e.products.asSequence().map(a::times).filterNot(ProductCollector::isZero)
+                                if (e.tail != `0`) products += a * e.tail
                             }
                         }
                         else                 -> throw UnsupportedOperationException()
@@ -192,26 +192,19 @@ class Product private constructor(
             private var tail: Double,
             powers: Map<BaseExpression, Double>
         ) {
-            private val powers = powers.toMutableMap()
+            private val powers = HashMap(powers)
+            private val differentials = powers.keys.filterIsInstance<Differential>().toHashSet()
+
+            fun isZero() = tail == .0
 
             operator fun timesAssign(c: Constant) {
                 tail *= c.value
             }
 
             operator fun timesAssign(e: ProductExpression) {
-                fun inner(e: FactorExpression) =
-                    when (e) {
-                        is BaseExpression -> powers.merge(e, 1.0) // {var, exp, ln}
-                        is Power          -> powers.merge(e.member, e.exponent.value)
-                        else              -> throw UnsupportedOperationException()
-                    }
-
-                return when (e) {
-                    is FactorExpression -> inner(e) // {var, factor = {pow, exp, ln}}
-                    is Product          -> {
-                        for (p in e.factors) inner(p)
-                        tail *= e.times.value
-                    }
+                when (e) {
+                    is FactorExpression -> inner(e) // {var, d_, factor = {pow, exp, ln}}
+                    is Product          -> if (e.factors.all { inner(it); tail != .0 }) tail *= e.times.value
                     else                -> throw UnsupportedOperationException()
                 }
             }
@@ -222,16 +215,41 @@ class Product private constructor(
             operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
 
             fun build(): Expression {
+                if (tail == .0) return `0`
                 val products = powers
                     .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
                     .toSet()
                 return when {
-                    // 包含不同的正负导算子
-                    products.any { it.differentialOrder > 0 } && products.any { it.differentialOrder < 0 }
-                                                      -> `0`
                     powers.isEmpty()                  -> Constant(tail)
                     tail == 1.0 && products.size == 1 -> products.first()
                     else                              -> Product(products, Constant(tail))
+                }
+            }
+
+            // 检查求导导致的消去
+            private fun check(dv: Differential) {
+                val nn = powers[dv]?.sign
+                when {
+                    nn == null                                   -> differentials -= dv
+                    differentials.all { powers[it]?.sign == nn } -> differentials += dv
+                    else                                         -> tail = .0
+                }
+            }
+
+            // 处理乘以因子，独立函数以避免递归
+            private fun inner(e: FactorExpression) {
+                when (e) {
+                    is Differential   -> {
+                        powers.merge(e, 1.0)
+                        check(e)
+                    }
+                    is BaseExpression -> // {var, exp, ln}
+                        powers.merge(e, 1.0)
+                    is Power          -> {
+                        powers.merge(e.member, e.exponent.value)
+                        (e.member as? Differential)?.let(::check)
+                    }
+                    else              -> throw UnsupportedOperationException()
                 }
             }
         }

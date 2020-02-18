@@ -4,6 +4,12 @@ fun main() {
     run {
         val x by variable
         val y by variable
+        val f = x + y + y
+        println(f.d() / x.d())
+    }
+    run {
+        val x by variable
+        val y by variable
 
         val f = 9 * x * x * y + 7 * x * x + 4 * y - 2
         val dx = d(f) / d(x)
