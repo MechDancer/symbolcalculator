@@ -4,7 +4,8 @@ fun main() {
     run {
         val x by variable
         val y by variable
-        val f = x + y + y
+        val f = (sqrt(x * x + y) + 1).pow(2)
+        println(f)
         println(f.d() / x.d())
     }
     run {

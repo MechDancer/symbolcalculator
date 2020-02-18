@@ -216,13 +216,20 @@ class Product private constructor(
 
             fun build(): Expression {
                 if (tail == .0) return `0`
-                val products = powers
-                    .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
-                    .toSet()
+                val products = powers.map { (e, k) -> Power[e, Constant(k)] }
+                val times = Constant(tail)
                 return when {
-                    products.isEmpty()                -> Constant(tail)
+                    products.isEmpty()                -> times
                     tail == 1.0 && products.size == 1 -> products.first()
-                    else                              -> Product(products, Constant(tail))
+                    else                              -> {
+                        val groups = products.groupBy { it is FactorExpression }
+                        val product = groups[true]
+                                          ?.map { it as FactorExpression }
+                                          ?.toSet()
+                                          ?.let { Product(it, times) }
+                                      ?: times
+                        groups[false]?.let { Product[Product[it], product] } ?: product
+                    }
                 }
             }
 

@@ -31,9 +31,10 @@ fun main() {
 
     val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
 
-    val dx = d(e) / d(x)
-    val dy = d(e) / d(y)
-    val dz = d(e) / d(z)
+    val de = d(e)
+    val dx = de / d(x)
+    val dy = de / d(y)
+    val dz = de / d(z)
 
     println("求导算法耗时 = ${System.currentTimeMillis() - t0}ms")
     println("误差函数 = $e")
@@ -42,8 +43,8 @@ fun main() {
     println("de/dz = $dz")
     println()
 
-    var p = vector3D(0, 0, -1)
-    val pid = PIDLimiter(2E-4, 1E-5, 2E-5, 30.0)
+    var p = vector3D(1, 0, -1)
+    val pid = PIDLimiter(.4, .02, .02, 30.0)
     for (i in 1..1000) {
         val grad = sample(dx, dy, dz, x, y, z, p)
         val k = pid(grad.length)
