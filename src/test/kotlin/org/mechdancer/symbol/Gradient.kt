@@ -8,7 +8,6 @@ import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import kotlin.math.abs
-import kotlin.math.pow
 
 fun main() {
     val beacons = listOf(
@@ -31,6 +30,7 @@ fun main() {
     val t0 = System.currentTimeMillis()
 
     val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
+
     val dx = d(e) / d(x)
     val dy = d(e) / d(y)
     val dz = d(e) / d(z)
@@ -69,10 +69,13 @@ fun distance(
     target: Vector3D,
     measure: Double
 ) =
-    (x - target.x).pow(2) +
-    (y - target.y).pow(2) +
-    (z - target.z).pow(2) +
-    -measure.pow(2)
+//    (x - target.x).pow(2) +
+//    (y - target.y).pow(2) +
+//    (z - target.z).pow(2) +
+//    -measure.pow(2)
+    sqrt((x - target.x).pow(2) +
+         (y - target.y).pow(2) +
+         (z - target.z).pow(2)) - measure
 
 fun Expression.sample(
     x: Variable,

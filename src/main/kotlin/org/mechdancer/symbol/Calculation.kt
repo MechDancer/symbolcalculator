@@ -220,7 +220,7 @@ class Product private constructor(
                     .mapNotNull { (e, k) -> Power[e, Constant(k)] as? FactorExpression }
                     .toSet()
                 return when {
-                    powers.isEmpty()                  -> Constant(tail)
+                    products.isEmpty()                -> Constant(tail)
                     tail == 1.0 && products.size == 1 -> products.first()
                     else                              -> Product(products, Constant(tail))
                 }
