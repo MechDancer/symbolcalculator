@@ -26,6 +26,14 @@ class ValueCalculator internal constructor(e: Expression) {
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
 
+fun Expression.substitute(field: Field) =
+    field.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }
+
+fun Field.substitute(field: Field) =
+    field.expressions.entries.fold(expressions) { r, (v, e) ->
+        r.mapValues { (_, e0) -> e0.substitute(v, e) }
+    }.let(::Field)
+
 // 表达式运算
 
 operator fun Expression.unaryMinus() = this * `-1`

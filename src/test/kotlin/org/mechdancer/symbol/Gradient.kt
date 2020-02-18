@@ -1,113 +1,56 @@
 package org.mechdancer.symbol
 
-import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.function.vector.euclid
-import org.mechdancer.algebra.function.vector.minus
-import org.mechdancer.algebra.function.vector.normalize
-import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import kotlin.math.abs
 
+private val beacons =
+    listOf(vector3D(0, 0, 0),
+           vector3D(30, 0, 0),
+           vector3D(30, 30, 0),
+           vector3D(0, 30, 0))
+
+private val mobile =
+    vector3D(15, 20, -3)
+
 fun main() {
-    val beacons = listOf(
-        vector3D(0, 0, 0),
-        vector3D(30, 0, 0),
-        vector3D(30, 30, 0),
-        vector3D(0, 30, 0))
+    val space = variables("x", "y", "z")
+    val map = beacons.map { it.toField() to (it euclid mobile) }
 
-    val mobile = vector3D(15, 20, -3)
-
-    val x by variable
-    val y by variable
-    val z by variable
-
-    // 热机
-    repeat(10) {
-        d(beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }) / d(x)
+    val e = map.sumBy { (beacon, measure) ->
+        ((space.ordinaryField - beacon).length - measure) `^` 2
     }
+    val grad = space.gradientOf(e)
 
-    val t0 = System.currentTimeMillis()
-
-    val e = beacons.sumBy { distance(x, y, z, it, mobile euclid it).pow(2) }
-
-    val de = d(e)
-    val dx = de / d(x)
-    val dy = de / d(y)
-    val dz = de / d(z)
-
-    println("求导算法耗时 = ${System.currentTimeMillis() - t0}ms")
-    println("误差函数 = $e")
-    println("de/dx = $dx")
-    println("de/dy = $dy")
-    println("de/dz = $dz")
-    println()
-
-    var p = vector3D(1, 0, -1)
+    val actual = mobile.toField()
+    var p = vector3D(1, 0, -1).toField()
     val pid = PIDLimiter(.4, .02, .02, 30.0)
-    for (i in 1..1000) {
-        val grad = sample(dx, dy, dz, x, y, z, p)
-        val k = pid(grad.length)
-        val step = grad.normalize() * k
+    for (i in 1..200) {
+        val temp = grad.substitute(p)
+        val l = (temp.length as Constant).value
+        val k = pid(l)
+        val step = temp * (k / l)
         p -= step
+
+        println(p)
 
         println("迭代次数 = $i")
         println("步长 = $k")
-        println("步伐 = ${step.rowView()}")
-        println("当前 = ${p.rowView()}")
-        println("损失 = ${e.sample(x, y, z, p)}")
-        println("误差 = ${p euclid mobile}")
+        println("损失 = ${e.substitute(p)}")
+        println("误差 = ${(p - actual).length}")
         println()
 
-        if (abs(k) < 5E-3) break
+        if (abs(k) < 5E-3) return
     }
 }
 
-fun distance(
-    x: Variable,
-    y: Variable,
-    z: Variable,
+private fun Vector3D.toField(): Field {
+    val (x, y, z) = this
+    return point("x" to x, "y" to y, "z" to z)
+}
 
-    target: Vector3D,
-    measure: Double
-) =
-//    (x - target.x).pow(2) +
-//    (y - target.y).pow(2) +
-//    (z - target.z).pow(2) +
-//    -measure.pow(2)
-    sqrt((x - target.x).pow(2) +
-         (y - target.y).pow(2) +
-         (z - target.z).pow(2)) - measure
-
-fun Expression.sample(
-    x: Variable,
-    y: Variable,
-    z: Variable,
-
-    current: Vector3D
-) =
-    (substitute {
-        this[x] = current.x
-        this[y] = current.y
-        this[z] = current.z
-    } as Constant).value
-
-fun sample(
-    dx: Expression,
-    dy: Expression,
-    dz: Expression,
-
-    x: Variable,
-    y: Variable,
-    z: Variable,
-
-    current: Vector3D
-) = vector3D(
-    dx.sample(x, y, z, current),
-    dy.sample(x, y, z, current),
-    dz.sample(x, y, z, current))
-
-class PIDLimiter(
+private class PIDLimiter(
     private val ka: Double,
     private val ki: Double,
     private val kd: Double,

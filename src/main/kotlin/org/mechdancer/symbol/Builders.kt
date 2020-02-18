@@ -32,3 +32,6 @@ fun variableSpace(names: Set<String> = emptySet(), range: IntRange) =
 
 fun variables(vararg names: String) =
     VariableSpace(names.map(::Variable).toSet())
+
+fun point(vararg pairs: Pair<String, Number>) =
+    Field(pairs.associate { (v, x) -> Variable(v) to Constant(x.toDouble()) })

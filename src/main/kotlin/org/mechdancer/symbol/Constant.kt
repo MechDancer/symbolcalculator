@@ -23,7 +23,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
     @Suppress("ObjectPropertyName")
     companion object {
-        private val formatter = DecimalFormat("#.#")
+        private val formatter = DecimalFormat("#.###")
 
         val NaN = Constant(Double.NaN)
 

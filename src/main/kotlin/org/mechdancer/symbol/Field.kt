@@ -1,9 +1,16 @@
 package org.mechdancer.symbol
 
-class Field(private val expressions: Map<Variable, Expression>) {
+class Field(internal val expressions: Map<Variable, Expression>) {
     val dim get() = expressions.size
     operator fun get(v: Variable) = expressions[v]
-    override fun toString() = expressions.toString()
+    override fun toString() =
+        expressions
+            .entries
+            .joinToString("\n") { (v, e) -> "$v -> $e" }
+
+    val length by lazy {
+        sqrt(expressions.entries.sumBy { (_, e) -> Power[e, Constant(2.0)] })
+    }
 
     private fun zip(others: Field, block: (Expression, Expression) -> Expression): Field {
         require(expressions.keys == others.expressions.keys)
@@ -12,8 +19,6 @@ class Field(private val expressions: Map<Variable, Expression>) {
 
     operator fun plus(others: Field) = zip(others, Expression::plus)
     operator fun minus(others: Field) = zip(others, Expression::minus)
-
-    val length by lazy {
-        expressions.entries.sumBy { (_, e) -> Power[e, Constant(2.0)] }
-    }
+    operator fun times(k: Double) = Field(expressions.mapValues { (_, e) -> e * k })
+    operator fun div(k: Double) = Field(expressions.mapValues { (_, e) -> e / k })
 }
