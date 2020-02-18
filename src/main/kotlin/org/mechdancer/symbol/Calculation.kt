@@ -76,13 +76,17 @@ class Sum private constructor(
         operator fun get(vararg e: Expression) = get(e.asList())
         operator fun get(list: Collection<Expression>) =
             when (list.size) {
-                0    -> throw UnsupportedOperationException()
+                0    -> `0`
                 1    -> list.first()
                 else -> {
+                    // 合并同类项
                     val collector = hashMapOf<Expression, Double>()
                     for (e in list) collector += e
+                    // 所谓常数就是 1 的倍数
                     val tail = collector.remove(`1`) ?: .0
+                    // 积式与常数相乘必然还是积式
                     val products = collector
+                        .asSequence()
                         .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
                         .toSet()
                     when {
@@ -142,7 +146,7 @@ class Product private constructor(
     override fun format(which: (Expression) -> String) =
         buildString {
             if (times != `1`) append("${which(times)} ")
-            val groups = factors.groupBy { it.differentialOrder != 0 }
+            val groups = factors.groupBy(::isDifferential)
             groups[false]?.let { append(it.joinToString(" ", transform = which)) }
             if (groups.size == 2) append(" ")
             groups[true]?.let { append(it.joinToString(" ", transform = which)) }
@@ -160,20 +164,23 @@ class Product private constructor(
                 1    -> list.first()
                 else -> {
                     val products = mutableListOf(ProductCollector())
-                    for (e in list) when (e) {
-                        `0`                  -> return `0`
-                        `1`                  -> Unit
-                        is Constant          -> products.removeIf { it *= e; it.isZero() }
-                        is ProductExpression -> products.removeIf { it *= e; it.isZero() }
-                        is Sum               -> {
-                            val copy = products.toList()
-                            products.clear()
-                            for (a in copy) {
-                                products += e.products.asSequence().map(a::times).filterNot(ProductCollector::isZero)
-                                if (e.tail != `0`) products += a * e.tail
+                    for (e in list) {
+                        when (e) {
+                            `0`                  -> return `0`
+                            `1`                  -> Unit
+                            is Constant          -> products.removeIf { it *= e; it.isZero() }
+                            is ProductExpression -> products.removeIf { it *= e; it.isZero() }
+                            is Sum               -> {
+                                val copy = products.toList()
+                                products.clear()
+                                for (a in copy) {
+                                    products += e.products.mapNotNull { (a * it).takeUnless(ProductCollector::isZero) }
+                                    if (e.tail != `0`) products += a * e.tail
+                                }
                             }
+                            else                 -> throw UnsupportedOperationException()
                         }
-                        else                 -> throw UnsupportedOperationException()
+                        if (products.isEmpty()) return `0`
                     }
                     Sum[products.map { it.build() }]
                 }
@@ -181,12 +188,8 @@ class Product private constructor(
         }
 
         // 作为导数算子的阶数
-        private val ProductExpression.differentialOrder
-            get() = when (this) {
-                is Differential -> -1
-                is Power        -> asDifferential()?.second ?: 0
-                else            -> 0
-            }
+        private fun isDifferential(p: ProductExpression) =
+            p is Differential || p is Power && p.member is Differential
 
         private class ProductCollector private constructor(
             private var tail: Double,
@@ -217,17 +220,17 @@ class Product private constructor(
             fun build(): Expression {
                 if (tail == .0) return `0`
                 val products = powers.map { (e, k) -> Power[e, Constant(k)] }
-                val times = Constant(tail)
                 return when {
-                    products.isEmpty()                -> times
+                    products.isEmpty()                -> Constant(tail)
                     tail == 1.0 && products.size == 1 -> products.first()
                     else                              -> {
                         val groups = products.groupBy { it is FactorExpression }
-                        val product = groups[true]
-                                          ?.map { it as FactorExpression }
-                                          ?.toSet()
-                                          ?.let { Product(it, times) }
-                                      ?: times
+                        val product = groups[true]?.let { factors ->
+                            if (tail == 1.0 && factors.size == 1)
+                                factors.first()
+                            else
+                                Product(factors.map { it as FactorExpression }.toSet(), Constant(tail))
+                        } ?: Constant(tail)
                         groups[false]?.let { Product[Product[it], product] } ?: product
                     }
                 }

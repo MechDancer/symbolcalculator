@@ -74,9 +74,6 @@ class Power private constructor(
             else          -> "{$parameterTex}^{${exponent.toTex()}}"
         }
 
-    fun asDifferential() =
-        (member as? Differential)?.let { it to -exponent.value.toInt() }
-
     companion object Builder {
         operator fun get(b: Expression, e: Constant): Expression {
             fun simplify(f: FunctionExpression): Expression =
