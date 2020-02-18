@@ -55,7 +55,8 @@ fun main() {
         println("步长 = $k")
         println("步伐 = ${step.rowView()}")
         println("当前 = ${p.rowView()}")
-        println("误差 = ${e.sample(x, y, z, p)}")
+        println("损失 = ${e.sample(x, y, z, p)}")
+        println("误差 = ${p euclid mobile}")
         println()
 
         if (abs(k) < 5E-3) break
