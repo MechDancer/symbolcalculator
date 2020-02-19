@@ -3,6 +3,7 @@
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`-1`
+import kotlin.math.E
 
 // 求导
 
@@ -30,19 +31,25 @@ operator fun Number.times(e: Expression) = e * this
 operator fun Number.div(e: Expression) = e.reciprocal() * this
 
 infix fun Expression.pow(n: Number) =
-    if (n is Int && n < 5) Product[List(n) { this }] else Power[this, Constant(n.toDouble())]
+    ((n as? Int) ?: n.toInt().takeIf { it.toDouble() == n.toDouble() })
+        ?.let { Product[List(it) { this }] }
+    ?: Power[this, Constant(n.toDouble())]
 
-infix fun Expression.pow(n: Constant) =
-    pow((n.value.toInt() as Number).takeIf { it.toDouble() == n.value } ?: n.value)
+infix fun Number.pow(e: Expression) =
+    Exponential[Constant(toDouble()), e]
 
-infix fun Constant.pow(e: Expression) = Exponential[this, e]
-infix fun Exponential.pow(e: Expression) = Exponential[base, Product[member, e]]
-infix fun Number.pow(e: Expression) = Exponential[Constant(toDouble()), e]
+infix fun Expression.pow(e: Expression) =
+    when (this) {
+        is Constant    -> Exponential[this, e]
+        is Exponential -> Exponential[base, Product[member, e]]
+        else           -> when (e) {
+            is Constant -> pow(e.value)
+            else        -> Exponential[Constant(E), Product[e, Ln[this]]]
+        }
+    }
 
 infix fun Expression.`^`(n: Number) = pow(n)
-infix fun Expression.`^`(n: Constant) = pow(n)
-infix fun Constant.`^`(e: Expression) = pow(e)
-infix fun Exponential.`^`(e: Expression) = pow(e)
+infix fun Expression.`^`(e: Expression) = pow(e)
 infix fun Number.`^`(e: Expression) = pow(e)
 
 fun ln(e: Expression) = Ln[e]
