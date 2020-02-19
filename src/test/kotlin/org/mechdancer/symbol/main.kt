@@ -4,7 +4,7 @@ fun main() {
     run {
         val x by variable
         val y by variable
-        val f = (sqrt(x * x + y) + 1) `^` 2
+        val f = sqrt(x * x + y) + 1 `^` 2
 
         val ddf = d(d(f))
         val dx = d(x)
@@ -30,14 +30,6 @@ fun main() {
         println(d(f))
 
         println(f.substitute { this[x] = 4; this[y] = 10 })
-    }
-    println()
-    run {
-        val x by variable
-        val y by variable
-        val f = sqrt((x pow 2) + (y pow 2))
-        println(f)
-        println(d(f) / d(x))
     }
     println()
     run {
