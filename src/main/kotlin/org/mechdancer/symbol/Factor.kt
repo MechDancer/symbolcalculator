@@ -79,7 +79,7 @@ class Power private constructor(
             fun simplify(f: FunctionExpression): Expression =
                 when (f) {
                     is BaseExpression -> Power(f, e)
-                    is Power          -> get(f.member, e pow e)
+                    is Power          -> get(f.member, f.exponent * e)
                     is Exponential    -> Exponential[f.base, get(f.member, e)]
                     else              -> throw UnsupportedOperationException()
                 }
@@ -104,7 +104,7 @@ class Power private constructor(
 class Exponential private constructor(
     val base: Constant,
     override val member: ExponentialExpression
-) : Factor(), BaseExpression {
+) : Factor(), BaseExpression, ExponentialExpression {
     override val df by lazy { this * ln(base) }
     override fun substitute(e: Expression) = get(base, e)
 
@@ -122,14 +122,12 @@ class Exponential private constructor(
                 b == `0` -> `0`
                 b == `1` -> `1`
                 else     -> when (e) {
-                    is Constant    -> b pow e
-                    is Variable    -> Exponential(b, e)
-                    is Power       -> Exponential(b, e)
-                    is Exponential -> Exponential(b pow e.base, e.member)
-                    is Ln          -> Power[e.member, ln(b)]
-                    is Product     -> Exponential(b pow e.times, e.resetTimes(`1`))
-                    is Sum         -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
-                    else           -> throw UnsupportedOperationException()
+                    is Constant              -> b pow e
+                    is Product               -> Exponential(b pow e.times, e.resetTimes(`1`))
+                    is ExponentialExpression -> Exponential(b, e)
+                    is Ln                    -> Power[e.member, ln(b)]
+                    is Sum                   -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
+                    else                     -> throw UnsupportedOperationException()
                 }
             }
     }

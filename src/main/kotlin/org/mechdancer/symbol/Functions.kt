@@ -8,32 +8,6 @@ import org.mechdancer.symbol.Constant.Companion.`-1`
 
 fun d(e: Expression) = e.d()
 
-// 代入
-
-class ValueCalculator internal constructor(e: Expression) {
-    var expression = e
-        private set
-
-    operator fun set(from: Expression, to: Expression) {
-        expression = expression.substitute(from, to)
-    }
-
-    operator fun set(from: Expression, to: Number) {
-        expression = expression.substitute(from, Constant(to.toDouble()))
-    }
-}
-
-fun Expression.substitute(block: ValueCalculator.() -> Unit) =
-    ValueCalculator(this).apply(block).expression
-
-fun Expression.substitute(field: Field) =
-    field.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }
-
-fun Field.substitute(field: Field) =
-    field.expressions.entries.fold(expressions) { r, (v, e) ->
-        r.mapValues { (_, e0) -> e0.substitute(v, e) }
-    }.let(::Field)
-
 // 表达式运算
 
 operator fun Expression.unaryMinus() = this * `-1`
@@ -62,11 +36,13 @@ infix fun Expression.pow(n: Constant) =
     pow((n.value.toInt() as Number).takeIf { it.toDouble() == n.value } ?: n.value)
 
 infix fun Constant.pow(e: Expression) = Exponential[this, e]
+infix fun Exponential.pow(e: Expression) = Exponential[base, Product[member, e]]
 infix fun Number.pow(e: Expression) = Exponential[Constant(toDouble()), e]
 
 infix fun Expression.`^`(n: Number) = pow(n)
 infix fun Expression.`^`(n: Constant) = pow(n)
 infix fun Constant.`^`(e: Expression) = pow(e)
+infix fun Exponential.`^`(e: Expression) = pow(e)
 infix fun Number.`^`(e: Expression) = pow(e)
 
 fun ln(e: Expression) = Ln[e]

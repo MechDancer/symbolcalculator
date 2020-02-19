@@ -12,6 +12,8 @@ inline class VariableSpace(val variables: Set<Variable>) {
         return Field(variables.associateWith { df / Differential(it) })
     }
 
+    override fun toString() = variables.toString()
+
     operator fun plus(others: VariableSpace) = VariableSpace(variables + others.variables)
     operator fun minus(others: VariableSpace) = VariableSpace(variables - others.variables)
 }

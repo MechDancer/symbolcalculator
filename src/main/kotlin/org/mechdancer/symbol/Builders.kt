@@ -18,17 +18,19 @@ val variable
 
 class VariableSpaceProperty(
     private val names: Set<String>,
-    private val range: IntRange)
+    private val range: Iterable<Any>)
     : ReadOnlyProperty<Any?, VariableSpace> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>) =
-        when {
-            names.isEmpty() -> range.map { "${property.name}$it" }
-            else            -> names.flatMap { name -> range.map { i -> "$name$i" } }
-        }.map(::Variable).toSet().let(::VariableSpace)
+    override fun getValue(thisRef: Any?, property: KProperty<*>): VariableSpace {
+        val pre = if (names.isEmpty()) listOf(property.name) else names.filterNot(String::isBlank)
+        val post = range.map(Any::toString).toList().takeUnless(Collection<*>::isEmpty) ?: emptyList()
+
+        return pre.flatMap { name -> post.map { i -> "$name$i" } }
+            .map(::Variable).toSet().let(::VariableSpace)
+    }
 }
 
-fun variableSpace(names: Set<String> = emptySet(), range: IntRange) =
-    VariableSpaceProperty(names, range)
+fun variableSpace(vararg names: String, indices: Iterable<Any> = emptyList()) =
+    VariableSpaceProperty(names.toSet(), indices)
 
 fun variables(vararg names: String) =
     VariableSpace(names.map(::Variable).toSet())
