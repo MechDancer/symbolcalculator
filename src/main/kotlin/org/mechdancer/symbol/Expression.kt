@@ -4,7 +4,7 @@ import org.mechdancer.symbol.Constant.Companion.`1`
 
 /** 可微表达式 */
 interface Expression {
-    /** 微分 */
+    /** 求表达式全微分 */
     fun d(): Expression
 
     /** 将 [from] 用 [to] 代换 */

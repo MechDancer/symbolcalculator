@@ -58,7 +58,7 @@ class Sum private constructor(
             append(which(products.first()))
             for (item in products.asSequence().drop(1))
                 if (item is Product && item.times < `0`)
-                    append(" - ${which(item).drop(1)}")
+                    append(" - ${which(item.resetTimes(-item.times))}")
                 else
                     append(" + ${which(item)}")
             when {

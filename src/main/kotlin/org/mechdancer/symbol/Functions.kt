@@ -1,24 +1,22 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ObjectPropertyName")
 
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.Constant.Companion.`-1`
 import kotlin.math.E
 
-// 求导
-
+/** 求表达式全微分 */
 fun d(e: Expression) = e.d()
 
-// 表达式运算
+// 表达式四则运算
 
 operator fun Expression.unaryMinus() = this * `-1`
-fun Expression.reciprocal() = Power[this, `-1`]
-fun sqrt(e: Expression) = Power[e, Constant(.5)]
+val Expression.`^-1` get() = Power[this, `-1`]
 
 operator fun Expression.plus(others: Expression) = Sum[this, others]
 operator fun Expression.minus(others: Expression) = Sum[this, -others]
 operator fun Expression.times(others: Expression) = Product[this, others]
-operator fun Expression.div(others: Expression) = Product[this, others.reciprocal()]
+operator fun Expression.div(others: Expression) = Product[this, others.`^-1`]
 
 operator fun Expression.plus(n: Number) = this + Constant(n.toDouble())
 operator fun Expression.minus(n: Number) = this - Constant(n.toDouble())
@@ -28,7 +26,11 @@ operator fun Expression.div(n: Number) = this / Constant(n.toDouble())
 operator fun Number.plus(e: Expression) = e + this
 operator fun Number.minus(e: Expression) = -e + this
 operator fun Number.times(e: Expression) = e * this
-operator fun Number.div(e: Expression) = e.reciprocal() * this
+operator fun Number.div(e: Expression) = e.`^-1` * this
+
+// 幂指对构造
+
+fun sqrt(e: Expression) = Power[e, Constant(.5)]
 
 infix fun Expression.pow(n: Number) =
     ((n as? Int) ?: n.toInt().takeIf { it.toDouble() == n.toDouble() })
@@ -38,13 +40,14 @@ infix fun Expression.pow(n: Number) =
 infix fun Number.pow(e: Expression) =
     Exponential[Constant(toDouble()), e]
 
-infix fun Expression.pow(e: Expression) =
+infix fun Expression.pow(others: Expression) =
     when (this) {
-        is Constant    -> Exponential[this, e]
-        is Exponential -> Exponential[base, Product[member, e]]
-        else           -> when (e) {
-            is Constant -> pow(e.value)
-            else        -> Exponential[Constant(E), Product[e, Ln[this]]]
+        is Constant    -> Exponential[this, others]
+        is Exponential -> Exponential[base, Product[member, others]]
+        else           -> when (others) {
+            is Constant -> pow(others.value)
+            // 对于幂指函数，取对数幂转化为基本初等函数的复合形式
+            else        -> Exponential[Constant(E), Product[others, Ln[this]]]
         }
     }
 
