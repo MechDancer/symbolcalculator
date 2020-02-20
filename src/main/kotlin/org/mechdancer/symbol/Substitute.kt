@@ -1,5 +1,7 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.linear.Field
+
 // 代入
 
 class ValueCalculator internal constructor(e: Expression) {

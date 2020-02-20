@@ -1,87 +1,45 @@
 package org.mechdancer.symbol
 
-import org.mechdancer.algebra.function.vector.euclid
-import org.mechdancer.algebra.implement.vector.Vector3D
-import org.mechdancer.algebra.implement.vector.vector3D
+import org.mechdancer.symbol.linear.Field
 import java.util.*
 import kotlin.math.abs
 
+// 地图
 private val beacons =
-    listOf(vector3D(0, 0, 0),
-           vector3D(30, 0, 0),
-           vector3D(30, 30, 0),
-           vector3D(0, 30, 0))
-
+    listOf(point("x" to 0, "y" to 0, "z" to 0),
+           point("x" to 30, "y" to 0, "z" to 0),
+           point("x" to 0, "y" to 30, "z" to 0),
+           point("x" to 30, "y" to 30, "z" to 0))
+// 移动标签
 private val mobile =
-    vector3D(15, 20, -3)
+    point("x" to 15, "y" to 20, "z" to -3)
+
+// 测量函数
 
 private val engine = Random()
-
-fun measure(b: Vector3D, m: Vector3D) =
-    (b euclid m) * (1 + 5E-3 * engine.nextGaussian()) + 1E-2 * engine.nextGaussian()
+fun measure(b: Field, m: Field) =
+    (b - m).length as Constant * (1 + 5E-3 * engine.nextGaussian()) + 1E-2 * engine.nextGaussian()
 
 fun main() {
-    val space = variables("x", "y", "z")
-    val map = beacons.map { it.toField() to measure(it, mobile) }
-
-    var t0 = System.currentTimeMillis()
-
-    val e = map.sumBy { (beacon, measure) ->
-        ((space.ordinaryField - beacon).length - measure) `^` 2
-    }
-    val gradField = space.gradientOf(e)
-
+    // 设定变量空间
+    val space by variableSpace("x", "y", "z")
+    // 绑定测距值
+    val map = beacons.map { it to measure(it, mobile) }
+    // 求误差函数
+    val t0 = System.currentTimeMillis()
+    val error = map.sumBy { (beacon, measure) -> (space.ordinaryField - beacon).length - measure `^` 2 }
     println("求梯度耗时 = ${System.currentTimeMillis() - t0}ms")
-
-    val actual = mobile.toField()
-    var p = vector3D(1, 0, -1).toField()
-    val pid = PIDLimiter(.4, .02, .02, 30.0)
-    for (i in 1..200) {
-        t0 = System.currentTimeMillis()
-
-        val grad = gradField.substitute(p)
-        val l = (grad.length as Constant).value
-        val k = pid(l)
-        val step = grad * (k / l)
-        p -= step
-
-        val t = System.currentTimeMillis() - t0
-
-        println(p)
-        println("迭代次数 = $i")
-        println("迭代耗时 = ${t}ms")
-        println("步长 = $k")
-        println("损失 = ${e.substitute(p)}")
-        println("误差 = ${(p - actual).length}")
-        println()
-
-        if (abs(k) < 5E-3) return
-    }
-}
-
-private fun Vector3D.toField(): Field {
-    val (x, y, z) = this
-    return point("x" to x, "y" to y, "z" to z)
-}
-
-private class PIDLimiter(
-    private val ka: Double,
-    private val ki: Double,
-    private val kd: Double,
-    private val max: Double
-) {
-    private var last = .0
-    private var sum = .0
-
-    operator fun invoke(e: Double): Double {
-        val dd = e - last
-        last = e
-        sum = .9 * sum + .1 * e
-        val r = ka * e + ki * sum + kd * dd
-        return when {
-            r > +max -> +max
-            r < -max -> -max
-            else     -> r
-        }
-    }
+    // 构造梯度下降迭代器
+    gradientDescent(error, space, PIDLimiter(.4, .02, .02, 30.0))
+        // 设定初始值
+        .scan(point("x" to 1, "y" to 0, "z" to -1) to Double.MAX_VALUE)
+        // 调用迭代函数
+        { (p, _), f -> f(p) }
+        // 设定最大迭代次数
+        .take(200)
+        // 设定收敛判定条件
+        .firstOrNull { (_, step) -> abs(step) < 5E-3 }
+        // 打印结果
+        ?.first
+        .let(::println)
 }

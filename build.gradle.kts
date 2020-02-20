@@ -10,10 +10,6 @@ version = "0.2.0-dev"
 repositories {
     mavenCentral()
     jcenter()
-    maven("https://maven.aliyun.com/repository/central")
-    maven("https://maven.aliyun.com/repository/google")
-    maven("https://maven.aliyun.com/repository/gradle-plugin")
-    maven("https://maven.aliyun.com/repository/jcenter")
 }
 
 dependencies {
@@ -21,7 +17,6 @@ dependencies {
 
     testImplementation("junit", "junit", "+")
     testImplementation(kotlin("test-junit"))
-    testImplementation("org.mechdancer", "linearalgebra", "0.2.7-dev-2")
 }
 
 tasks {

@@ -1,5 +1,7 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.linear.Field
+import org.mechdancer.symbol.linear.VariableSpace
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -22,7 +24,7 @@ class VariableSpaceProperty(
     : ReadOnlyProperty<Any?, VariableSpace> {
     override fun getValue(thisRef: Any?, property: KProperty<*>): VariableSpace {
         val pre = if (names.isEmpty()) listOf(property.name) else names.filterNot(String::isBlank)
-        val post = range.map(Any::toString).toList().takeUnless(Collection<*>::isEmpty) ?: emptyList()
+        val post = range.map(Any::toString).toList().takeUnless(Collection<*>::isEmpty) ?: listOf("")
 
         return pre.flatMap { name -> post.map { i -> "$name$i" } }
             .map(::Variable).toSet().let(::VariableSpace)
@@ -37,3 +39,11 @@ fun variables(vararg names: String) =
 
 fun point(vararg pairs: Pair<String, Number>) =
     Field(pairs.associate { (v, x) -> Variable(v) to Constant(x.toDouble()) })
+
+fun field(vararg pairs: Pair<String, Expression>) =
+    Field(pairs.associate { (v, e) -> Variable(v) to e })
+
+fun Field.mapExpressions(vararg pairs: Pair<Variable, (Expression) -> Expression>): Field {
+    val f = pairs.toMap().takeUnless(Map<*, *>::isEmpty) ?: return this
+    return expressions.mapValues { (v, e) -> f[v]?.invoke(e) ?: e }.let(::Field)
+}

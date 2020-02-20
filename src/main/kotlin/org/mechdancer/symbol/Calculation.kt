@@ -218,7 +218,7 @@ class Product private constructor(
             operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
 
             fun build(): Expression {
-                if (tail == .0) return `0`
+                // if (tail == .0) return `0` // 实际上不必做这个检查，若系数为 0，外部将直接消去
                 val products = powers.map { (e, k) -> Power[e, Constant(k)] }
                 return when {
                     products.isEmpty()                -> Constant(tail)
@@ -236,13 +236,21 @@ class Product private constructor(
                 }
             }
 
-            // 检查求导导致的消去
+            // 认为两个独立变量总是无关，du / dv === 0，检查求导导致的消去
+            // 参数 [dv] 是此次迭代改变指数的微元
             private fun check(dv: Differential) {
+                // 检查微元的符号
                 val nn = powers[dv]?.sign
                 when {
-                    nn == null                                   -> differentials -= dv
-                    differentials.all { powers[it]?.sign == nn } -> differentials += dv
-                    else                                         -> tail = .0
+                    // 微元已经消去，则离开相关微元集
+                    nn == null
+                    -> differentials -= dv
+                    // 如果所有其他微元同号，新微元加入相关微元集
+                    differentials.all { powers[it]?.sign == nn }
+                    -> differentials += dv
+                    // 否则因子直接置 0，将在外部循环中消去
+                    else
+                    -> tail = .0
                 }
             }
 
