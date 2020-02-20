@@ -12,14 +12,12 @@ fun gradientDescent(
     pid: PIDLimiter
 ): GradientDescentStep {
     val gradField = space.hamiltonian * error
-    fun step(p: Field): Pair<Field, Double> {
+    return { p ->
         val grad = gradField.substitute(p)
         val l = (grad.length as Constant).value
         val k = pid(l)
-        return p - grad * (k / l) to k
+        p - grad * (k / l) to k
     }
-
-    return ::step
 }
 
 /** 递推计算 */
@@ -27,7 +25,10 @@ fun <T> recurrence(
     init: T, block: (T) -> T
 ) = sequence {
     var t = init
-    while (true) yield(block(t).also { t = it })
+    while (true) {
+        t = block(t)
+        yield(t)
+    }
 }
 
 class PIDLimiter(
@@ -43,7 +44,7 @@ class PIDLimiter(
         val dd = e - last
         last = e
         sum = .9 * sum + .1 * e
-        val r = ka * e + ki * sum + kd * dd
+        val r = ka * (e + ki * sum + kd * dd)
         return when {
             r > +max -> +max
             r < -max -> -max

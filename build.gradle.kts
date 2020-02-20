@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.mechdancer"
-version = "0.2.0-dev"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,12 @@ dependencies {
 
     testImplementation("junit", "junit", "+")
     testImplementation(kotlin("test-junit"))
+
+    // 支持网络工具
+    testImplementation(kotlin("reflect"))
+    testImplementation("org.mechdancer", "dependency", "+")
+    testImplementation("org.mechdancer", "remote", "+")
+    testImplementation("org.slf4j", "slf4j-api", "+")
 }
 
 tasks {
