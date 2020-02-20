@@ -3,39 +3,31 @@ package org.mechdancer.symbol
 import org.mechdancer.symbol.linear.Field
 import org.mechdancer.symbol.linear.VariableSpace
 
+/** 梯度下降步骤函数 := 当前位置 -> 实际步长 */
+typealias GradientDescentStep = (Field) -> Pair<Field, Double>
+
 fun gradientDescent(
     error: Expression,
     space: VariableSpace,
     pid: PIDLimiter
-) =
-    sequence<(Field) -> Pair<Field, Double>> {
-        val gradField = space.hamiltonian * error
-        var i = 0
-        while (true) yield { p ->
-            val t0 = System.nanoTime()
-
-            val grad = gradField.substitute(p)
-            val l = (grad.length as Constant).value
-            val k = pid(l)
-            val step = grad * (k / l)
-            val result = p - step
-
-            val t = System.nanoTime() - t0
-
-            println("第 ${++i} 次迭代（${t / 1E6}ms）")
-            println("步长 = $k")
-            println("损失 = ${error.substitute(p)}")
-            println()
-            result to k
-        }
+): GradientDescentStep {
+    val gradField = space.hamiltonian * error
+    fun step(p: Field): Pair<Field, Double> {
+        val grad = gradField.substitute(p)
+        val l = (grad.length as Constant).value
+        val k = pid(l)
+        return p - grad * (k / l) to k
     }
 
-fun <T, R> Sequence<T>.scan(
-    init: R,
-    block: (R, T) -> R
+    return ::step
+}
+
+/** 递推计算 */
+fun <T> recurrence(
+    init: T, block: (T) -> T
 ) = sequence {
-    var r = init
-    for (item in this@scan) yield(block(r, item).also { r = it })
+    var t = init
+    while (true) yield(block(t).also { t = it })
 }
 
 class PIDLimiter(
