@@ -46,9 +46,20 @@ class PIDLimiter(
         sum = .9 * sum + .1 * e
         val r = ka * (e + ki * sum + kd * dd)
         return when {
-            r > +max -> +max
-            r < -max -> -max
+            r > +max -> {
+                clear()
+                +max
+            }
+            r < -max -> {
+                clear()
+                -max
+            }
             else     -> r
         }
+    }
+
+    private fun clear() {
+        last = .0
+        sum = .0
     }
 }

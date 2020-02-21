@@ -56,7 +56,7 @@ fun main() {
         // 求损失函数
         val error = struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / beacons.size
         // 构造梯度下降迭代函数
-        val f = gradientDescent(error, space, PIDLimiter(.1, 2.0, 2.0, 30.0))
+        val f = gradientDescent(error, space, PIDLimiter(.1, 2.0, 3.0, 30.0))
         val t1 = System.currentTimeMillis()
         // 设定初始值
         val result =
