@@ -13,7 +13,7 @@ private fun pointXYZ(x: Number, y: Number, z: Number) =
                            Variable("y") to Constant(y.toDouble()),
                            Variable("z") to Constant(z.toDouble())))
 
-private const val 每边点数 = 4
+private const val 每边点数 = 3
 
 // 地图
 private val BEACONS: List<ExpressionVector> = run {
@@ -30,16 +30,16 @@ private val BEACONS: List<ExpressionVector> = run {
 
 // 移动标签
 private val mobile =
-    pointXYZ(15, 20, -3)
+    pointXYZ(15, 20, -1)
 
 // 测量函数
 
 private val engine = Random()
 private fun measure(b: ExpressionVector, m: ExpressionVector) =
-    (b - m).length() * (1 + 1E-3 * engine.nextGaussian()) + 5E-3 * engine.nextGaussian()
+    (b - m).length() * (1 + 1e-3 * engine.nextGaussian()) + 5e-3 * engine.nextGaussian()
 
 fun main() {
-    val remote = remoteHub("梯度下降").apply {
+    val remote = remoteHub("牛顿迭代").apply {
         openAllNetworks()
         println(networksInfo())
     }
@@ -55,17 +55,16 @@ fun main() {
         val error = struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / BEACONS.size
         newton(error, space)
         // 构造梯度下降迭代函数
-        val f = gradientDescent(error, space, PIDLimiter(.1, 2.0, 3.0, 30.0))
+        val f = newton(error, space)
         val t1 = System.currentTimeMillis()
         // 设定初始值
         val result =
-            recurrence(pointXYZ(1, 0, -1) to .0) { (p, _) -> f(p) }
-                .take(200)                            // 设定最大迭代次数
-                .first { (_, step) -> abs(step) < 1E-3 } // 设定收敛判定条件
-                .first                                   // 取出结果
+            recurrence(pointXYZ(1, 0, -10) to .0) { (p, _) -> f(p) }
+                .take(200)                             // 设定最大迭代次数
+                .first { (_, step) -> abs(step) < 1E-12 } // 设定收敛判定条件
+                .first                                    // 取出结果
         val t2 = System.currentTimeMillis()
-        @Suppress("UNCHECKED_CAST")
         remote.paint(result - mobile)
-        println("总耗时 = 求梯度 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
+        println("总耗时 = 求算子 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
     }
 }

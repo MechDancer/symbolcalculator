@@ -1,6 +1,6 @@
 package org.mechdancer.symbol
 
-import org.mechdancer.symbol.linear.Field
+import org.mechdancer.symbol.linear.ExpressionVector
 
 // 代入
 
@@ -23,10 +23,5 @@ fun Expression.substitute(e: Expression, n: Number) =
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
 
-fun Expression.substitute(field: Field) =
-    field.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }
-
-fun Field.substitute(field: Field) =
-    field.expressions.entries.fold(expressions) { r, (v, e) ->
-        r.mapValues { (_, e0) -> e0.substitute(v, e) }
-    }.let(::Field)
+fun Expression.substitute(expressionVector: ExpressionVector) =
+    expressionVector.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }

@@ -1,22 +1,43 @@
 package org.mechdancer.symbol
 
-import org.mechdancer.symbol.linear.Field
+import org.mechdancer.algebra.function.matrix.inverse
+import org.mechdancer.algebra.function.matrix.times
+import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.Hamiltonian.Companion.dfToGrad
+import org.mechdancer.symbol.linear.HessianMatrix
 import org.mechdancer.symbol.linear.VariableSpace
 
-/** 梯度下降步骤函数 := 当前位置 -> 实际步长 */
-typealias GradientDescentStep = (Field) -> Pair<Field, Double>
+/** 优化步骤函数 := 当前位置 -> (新位置, 实际步长) */
+typealias OptimizeStep = (ExpressionVector) -> Pair<ExpressionVector, Double>
 
 fun gradientDescent(
     error: Expression,
     space: VariableSpace,
     pid: PIDLimiter
-): GradientDescentStep {
+): OptimizeStep {
     val gradField = space.hamiltonian * error
     return { p ->
         val grad = gradField.substitute(p)
-        val l = (grad.length as Constant).value
+        val l = grad.length().toDouble()
         val k = pid(l)
         p - grad * (k / l) to k
+    }
+}
+
+fun newton(
+    error: Expression,
+    space: VariableSpace
+): OptimizeStep {
+    val df = error.d()
+    val gradient = dfToGrad(df, space)
+    val hessian = HessianMatrix(df.d(), space)
+    val order = space.variables.toList()
+    return { p ->
+        val g = gradient.toVector(p, space)
+        val h = hessian.toMatrix(p)
+        val d = h.inverse() * g
+        val step = order.mapIndexed { i, v -> v to Constant(d[i]) }.toMap().let(::ExpressionVector)
+        p - step to d.length
     }
 }
 

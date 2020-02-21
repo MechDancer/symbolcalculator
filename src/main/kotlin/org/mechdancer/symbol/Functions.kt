@@ -78,3 +78,7 @@ fun <T> Array<T>.sumBy(block: (T) -> Expression) = Sum[map(block)]
 fun <T> Sequence<T>.productBy(block: (T) -> Expression) = Product[map(block).toList()]
 fun <T> Iterable<T>.productBy(block: (T) -> Expression) = Product[map(block)]
 fun <T> Array<T>.productBy(block: (T) -> Expression) = Product[map(block)]
+
+// 其他
+
+fun Expression.toDouble() = (this as Constant).value
