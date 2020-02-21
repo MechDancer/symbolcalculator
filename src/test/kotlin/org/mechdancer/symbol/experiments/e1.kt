@@ -1,9 +1,9 @@
 @file:Suppress("ObjectPropertyName", "NonAsciiCharacters")
 
-package org.mechdancer.symbol
+package org.mechdancer.symbol.experiments
 
-import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.presets.remoteHub
+import org.mechdancer.symbol.*
 import org.mechdancer.symbol.linear.Field
 import java.util.*
 import kotlin.math.abs
@@ -13,7 +13,7 @@ private fun pointXYZ(x: Number, y: Number, z: Number) =
                 Variable("y") to Constant(y.toDouble()),
                 Variable("z") to Constant(z.toDouble())))
 
-private const val 测距次数 = 200
+private const val 测距次数 = 1
 
 // 地图
 private val beacons: List<Field> =
@@ -34,7 +34,7 @@ private val mobile =
 // 测量函数
 
 private val engine = Random()
-fun measure(b: Field, m: Field) =
+private fun measure(b: Field, m: Field) =
     (b - m).length as Constant * (1 + 1E-3 * engine.nextGaussian()) + 5E-3 * engine.nextGaussian()
 
 fun main() {
@@ -51,7 +51,7 @@ fun main() {
         val map = beacons.map { measure(it, mobile) }
         val t0 = System.currentTimeMillis()
         // 求损失函数
-        val error = struct.sumBy { (i, e) -> e - map[i] `^` 2 } / beacons.size
+        val error = struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / beacons.size
         // 构造梯度下降迭代函数
         // 无误差不重复测最优参数：PIDLimiter(.4, .05, .05, 30.0)
         val f = gradientDescent(error, space, PIDLimiter(.1, 2.0, 2.0, 30.0))
@@ -66,10 +66,4 @@ fun main() {
         remote.paint(result - mobile)
         println("总耗时 = 求梯度 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
     }
-}
-
-fun RemoteHub.paint(field: Field) {
-    for ((v, e) in field.expressions)
-        if (e is Constant)
-            paint(v.toString(), e.value)
 }

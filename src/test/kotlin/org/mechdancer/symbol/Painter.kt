@@ -7,6 +7,7 @@ import org.mechdancer.remote.resources.Command
 import org.mechdancer.remote.resources.MulticastSockets
 import org.mechdancer.remote.resources.Name
 import org.mechdancer.remote.resources.Networks
+import org.mechdancer.symbol.linear.Field
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 
@@ -63,4 +64,13 @@ fun RemoteHub.paint(
         writeFloat(x.toFloat())
         writeFloat(y.toFloat())
     }
+}
+
+/**
+ * 场画成一维信号的集合
+ */
+fun RemoteHub.paint(field: Field) {
+    for ((v, e) in field.expressions)
+        if (e is Constant)
+            paint(v.toString(), e.value)
 }
