@@ -13,7 +13,7 @@ private fun pointXYZ(x: Number, y: Number, z: Number) =
                            Variable("y") to Constant(y.toDouble()),
                            Variable("z") to Constant(z.toDouble())))
 
-private const val 测距次数 = 1
+private const val 测距次数 = 100
 
 // 地图
 private val BEACONS: List<ExpressionVector> =
@@ -29,7 +29,7 @@ private val BEACONS: List<ExpressionVector> =
 
 // 移动标签
 private val mobile =
-    pointXYZ(15, 20, -1)
+    pointXYZ(15, 20, -3)
 
 // 测量函数
 
@@ -38,7 +38,7 @@ private fun measure(b: ExpressionVector, m: ExpressionVector) =
     (b - m).length() * (1 + 1E-3 * engine.nextGaussian()) + 5E-3 * engine.nextGaussian()
 
 fun main() {
-    val remote = remoteHub("梯度下降").apply {
+    val remote = remoteHub("定位优化").apply {
         openAllNetworks()
         println(networksInfo())
     }
@@ -53,9 +53,8 @@ fun main() {
         val t0 = System.currentTimeMillis()
         // 求损失函数
         val error = struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / BEACONS.size
-        // 构造梯度下降迭代函数
-        // 无误差不重复测最优参数：PIDLimiter(.4, .05, .05, 30.0)
-        val f = gradientDescent(error, space, PIDLimiter(.1, 2.0, 2.0, 30.0))
+        // 构造优化迭代函数
+        val f = newton(error, space)
         val t1 = System.currentTimeMillis()
         // 设定初始值
         val result =
@@ -64,7 +63,6 @@ fun main() {
                 .first { (_, step) -> abs(step) < 1E-3 } // 设定收敛判定条件
                 .first                                   // 取出结果
         val t2 = System.currentTimeMillis()
-        @Suppress("UNCHECKED_CAST")
         remote.paint(result - mobile)
         println("总耗时 = 求梯度 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
     }

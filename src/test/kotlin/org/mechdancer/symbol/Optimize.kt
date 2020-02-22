@@ -52,6 +52,17 @@ fun <T> recurrence(
     }
 }
 
+inline fun <T : Any> Sequence<T>.firstOrLast(
+    block: (T) -> Boolean
+): T {
+    var last: T? = null
+    for (t in this) {
+        if (block(t)) return t
+        last = t
+    }
+    return last ?: throw NoSuchElementException("Sequence is empty.")
+}
+
 class PIDLimiter(
     private val ka: Double,
     private val ki: Double,
