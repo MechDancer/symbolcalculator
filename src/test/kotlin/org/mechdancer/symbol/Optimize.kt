@@ -2,6 +2,10 @@ package org.mechdancer.symbol
 
 import org.mechdancer.algebra.function.matrix.inverse
 import org.mechdancer.algebra.function.matrix.times
+import org.mechdancer.algebra.function.vector.dot
+import org.mechdancer.algebra.function.vector.normalize
+import org.mechdancer.algebra.function.vector.plus
+import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian.Companion.dfToGrad
 import org.mechdancer.symbol.linear.HessianMatrix
@@ -24,20 +28,28 @@ fun gradientDescent(
     }
 }
 
-fun newton(
-    error: Expression,
-    space: VariableSpace
-): OptimizeStep {
-    val df = error.d()
-    val gradient = dfToGrad(df, space)
-    val hessian = HessianMatrix(df.d(), space)
-    val order = space.variables.toList()
+/**
+ * 牛顿迭代优化
+ *
+ * @param error 损失函数
+ * @param space 变量空间
+ * @return 优化步骤函数
+ */
+fun newton(error: Expression, space: VariableSpace): OptimizeStep {
+    val df = error.d()                         // 一阶全微分表达式
+    val gradient = dfToGrad(df, space)         // 梯度表达式
+    val hessian = HessianMatrix(df.d(), space) // 海森矩阵表达式
+    val order = space.variables.toList()       // 向量维度顺序
     return { p ->
-        val g = gradient.toVector(p, space)
-        val h = hessian.toMatrix(p)
-        val d = h.inverse() * g
-        val step = order.mapIndexed { i, v -> v to Constant(d[i]) }.toMap().let(::ExpressionVector)
-        p - step to d.length
+        val step = run {
+            val g = gradient.toVector(p, space)       // 梯度
+            val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
+            val k = h.normalize() dot g.normalize()   // 归一化方向系数
+            h * k + g * (1 - k)
+        }
+        order // 向量转化为表达式向量
+            .mapIndexed { i, v -> v to Constant(step[i]) }
+            .let { p - ExpressionVector(it.toMap()) to step.length }
     }
 }
 

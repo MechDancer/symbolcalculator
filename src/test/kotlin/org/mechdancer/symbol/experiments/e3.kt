@@ -29,7 +29,7 @@ private val BEACONS = listOf(
 
 // 移动标签
 private val mobile =
-    vector3D(-5, -5, -3)
+    vector3D(15, 10, -1)
 
 // 测量函数
 
@@ -44,17 +44,31 @@ fun main() {
     }
     val space by variableSpace("x", "y", "z")
     val struct = BEACONS.map { (space.ordinaryField - it.toPoint()).length() }.withIndex()
-
-    val map = BEACONS.map { measure(it, mobile) }
-    val f = newton(struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / BEACONS.size, space)
-    recurrence(vector3D(15, 15, -1).toPoint() to .0) { (p, _) -> f(p) }
-        .take(200)
-        .firstOrNull { (p, s) ->
-            remote.paint(p)
-            println(s)
-            readLine()
-            abs(s) < 5E-4
-        }
-//        result?.also { remote.paint(it - mobile.toPoint()) }
-//        println("总耗时 = 求梯度 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
+    val init = vector3D(15, 15, -3).toPoint()
+    while (true) {
+        val map = BEACONS.map { measure(it, mobile) }
+        val max = map.max()!! + 1
+        val kkk = map.map { max - it }
+        val k = kkk.sum()
+        val t0 = System.currentTimeMillis()
+        val f = newton(struct.sumBy { (i, e) -> ((e - map[i]) `^` 2) * kkk[i] } / k, space)
+        val t1 = System.currentTimeMillis()
+        val result =
+            recurrence(init to .0) { (p, _) -> f(p) }
+                .take(200)
+                .firstOrLast { (_, s) -> abs(s) < 5E-4 }
+                .first
+                .let { result ->
+                    val z = result[Variable("z")]!!.toDouble()
+                    result.takeIf { z > -.1 }
+                        ?.expressions
+                        ?.toMutableMap()
+                        ?.also { it[Variable("z")] = Constant(-z) }
+                        ?.let(::ExpressionVector)
+                    ?: result
+                }
+        val t2 = System.currentTimeMillis()
+        remote.paint(result - mobile.toPoint())
+        println("总耗时 = 求梯度 + 迭代 = ${t1 - t0}ms + ${t2 - t1}ms = ${t2 - t0}ms")
+    }
 }

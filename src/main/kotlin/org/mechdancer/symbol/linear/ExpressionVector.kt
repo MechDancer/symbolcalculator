@@ -5,7 +5,7 @@ import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
 
 /** 表达式向量 */
-inline class ExpressionVector(internal val expressions: Map<Variable, Expression>) {
+inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
     val dim get() = expressions.size
     operator fun get(v: Variable) = expressions[v]
     override fun toString() = expressions.entries.joinToString("\n") { (v, e) -> "$v -> $e" }
