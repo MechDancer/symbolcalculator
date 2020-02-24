@@ -67,6 +67,22 @@ fun RemoteHub.paint(
 }
 
 /**
+ * 画三维信号
+ */
+fun RemoteHub.paint(
+    topic: String,
+    x: Number,
+    y: Number,
+    z: Number
+) = paint(topic, 3) {
+    DataOutputStream(this).apply {
+        writeFloat(x.toFloat())
+        writeFloat(y.toFloat())
+        writeFloat(z.toFloat())
+    }
+}
+
+/**
  * 场画成一维信号的集合
  */
 fun RemoteHub.paint(expressionVector: ExpressionVector) {
