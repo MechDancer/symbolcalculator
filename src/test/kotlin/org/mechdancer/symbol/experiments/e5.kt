@@ -9,15 +9,13 @@ import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
-import kotlin.math.abs
-import kotlin.math.log2
 import kotlin.math.sqrt
 
 // 地图
 
 private val engine = java.util.Random()
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(2.0)
+private val interval = maxMeasure / sqrt(5.0) - .1
 
 private val BEACONS = listOf(
     vector3D(0, 0, 0),
@@ -25,7 +23,13 @@ private val BEACONS = listOf(
     vector3D(interval, interval, 0),
     vector3D(0, interval, 0),
     vector3D(2 * interval, 0, 0),
-    vector3D(2 * interval, interval, 0))
+    vector3D(2 * interval, interval, 0),
+
+    vector3D(3 * interval, 0, 0),
+    vector3D(3 * interval, interval, 0))
+
+//    vector3D(1 * interval, .5 * interval, -2),
+//    vector3D(2 * interval, .5 * interval, -2))
 
 private val ZEROS = variables("x0", "y0", "z0", "y1", "z1", "z2")
 
@@ -40,12 +44,12 @@ fun main() {
     val error = measures
         .mapIndexed { i, distances ->
             distances.mapIndexed { j, distance ->
-//                if (distance < maxMeasure)
-                sqrt((Variable("x$i") - Variable("x$j") `^` 2) +
-                     (Variable("y$i") - Variable("y$j") `^` 2) +
-                     (Variable("z$i") - Variable("z$j") `^` 2)) - distance
-//                else
-//                    Constant.`0`
+                if (distance < maxMeasure)
+                    sqrt((Variable("x$i") - Variable("x$j") `^` 2) +
+                         (Variable("y$i") - Variable("y$j") `^` 2) +
+                         (Variable("z$i") - Variable("z$j") `^` 2)) - distance
+                else
+                    Constant.`0`
             }
         }
         .flatten()
@@ -61,25 +65,32 @@ fun main() {
     remote.paintMap(init)
 
     recurrence(init to .0) { (p, _) -> f(p) }
-        .take(2000)
+        .take(1000)
         .withIndex()
         .firstOrLast { (i, t) ->
             val (p, s) = t
             remote.paintMap(p)
-            (log2(s) * 20).toLong().takeIf { it > 0 }?.also { Thread.sleep(it) }
             println("$i\t$s")
-            abs(s) < 2e-3
+            i > 600 && s < 1e-6
         }
         .value
         .first
-        .also { println(it) }
+        .also(::printError)
 }
 
-fun RemoteHub.paintMap(field: ExpressionVector) {
-    for (i in BEACONS.indices) {
-        val x = field[Variable("x$i")]?.toDouble() ?: .0
-        val y = field[Variable("y$i")]?.toDouble() ?: .0
-        val z = field[Variable("z$i")]?.toDouble() ?: .0
-        paint("标签$i", x, y, z)
+fun ExpressionVector.toPoints() =
+    BEACONS.indices.map { i ->
+        val x = this[Variable("x$i")]?.toDouble() ?: .0
+        val y = this[Variable("y$i")]?.toDouble() ?: .0
+        val z = this[Variable("z$i")]?.toDouble() ?: .0
+        vector3D(x, y, z)
     }
-}
+
+fun RemoteHub.paintMap(field: ExpressionVector) =
+    field.toPoints().forEachIndexed { i, (x, y, z) -> paint("标签$i", x, y, z) }
+
+fun printMap(field: ExpressionVector) =
+    field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v.rowView()}") }
+
+fun printError(field: ExpressionVector) =
+    field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v euclid BEACONS[i]}") }

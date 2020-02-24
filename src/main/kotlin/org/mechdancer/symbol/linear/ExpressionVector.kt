@@ -3,6 +3,7 @@ package org.mechdancer.symbol.linear
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
+import kotlin.streams.asSequence
 
 /** 表达式向量 */
 inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
@@ -28,11 +29,13 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
         }.let(::ExpressionVector)
 
     fun toVector(values: ExpressionVector, order: VariableSpace): Vector {
-        val valueSave = values.expressions.entries.fold(expressions) { r, (v, e) ->
-            r.mapValues { (_, e0) -> e0.substitute(v, e) }
-        }.mapValues { (_, e) -> e.toDouble() }
-        return order.variables.toList().map {
-            valueSave.getValue(it)
-        }.toListVector()
+        val valueSave = values.expressions.entries
+            .fold(expressions) { r, (v, e) ->
+                r.entries.parallelStream()
+                    .map { (key, e0) -> key to e0.substitute(v, e) }
+                    .asSequence()
+                    .toMap()
+            }
+        return order.variables.toList().map { valueSave.getValue(it).toDouble() }.toListVector()
     }
 }
