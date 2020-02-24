@@ -54,7 +54,7 @@ fun main() {
         // 求损失函数
         val error = struct.sumBy { (i, e) -> (e - map[i]) `^` 2 } / BEACONS.size
         // 构造优化迭代函数
-        val f = newton(error, space)
+        val f = dampingNewton(error, space)
         val t1 = System.currentTimeMillis()
         // 设定初始值
         val result =
