@@ -16,6 +16,7 @@ import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.linear.ExpressionVector
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 private fun Vector3D.toPoint() =
@@ -23,7 +24,8 @@ private fun Vector3D.toPoint() =
                            Variable("y") to Constant(y),
                            Variable("z") to Constant(z)))
 
-private const val interval = 15
+private const val maxMeasure = 30.0
+private val interval = maxMeasure / 2 / sqrt(2.0)
 
 // 地图
 private val BEACONS = listOf(
@@ -39,8 +41,7 @@ private val BEACONS = listOf(
 // 测量函数
 
 private val engine = java.util.Random()
-private fun measure(b: Vector3D, m: Vector3D) =
-    (b euclid m) //* (1 + 1e-3 * engine.nextGaussian()) + 5e-3 * engine.nextGaussian()
+private fun measure(d: Double) = d * (1 + 1e-3 * engine.nextGaussian()) + 5e-3 * engine.nextGaussian()
 
 fun main() {
     val remote = remoteHub("定位优化").apply {
@@ -48,30 +49,27 @@ fun main() {
         println(networksInfo())
     }
     val space by variableSpace("x", "y", "z")
-    val struct = BEACONS.map { (space.ordinaryField - it.toPoint()).length() }.withIndex()
+    val struct = BEACONS.associateWith { (space.ordinaryField - it.toPoint()).length() }
 
     val vx = Variable("x")
     val vy = Variable("y")
     val vz = Variable("z")
 
-    for (x in 0..30) for (y in x..30) for (z in -5..-1) {
+    val upperRange = (2 * interval).roundToInt()
+    for (x in 0..upperRange) for (y in x..upperRange) for (z in -3..-1) {
         // 移动标签
         val mobile = vector3D(x, y, z)
+        val map0 = BEACONS.associateWith(mobile::euclid).filterValues { it < maxMeasure }
         val errors = (1..50).map {
             // 测量
-            val map = BEACONS.map { measure(it, mobile) }
-            // FIXME 确定方程增益 有反效果？为什么
-            // val max = map.max()!! + 1
-            // val a = map.map { max - it }
-            // val f = newton(struct.sumBy { (i, e) -> ((e - map[i]) `^` 2) } / BEACONS.size, space)
+            val map = map0.mapValues { (_, d) -> measure(d) }
             // 求损失函数
-            val error = struct.sumBy { (i, e) -> ((e - map[i]) `^` 2) } / BEACONS.size
+            val error = map.entries.sumBy { (b, e) -> e - struct.getValue(b) `^` 2 } / map.size
             val f = dampingNewton(error, space)
             //求解
             val result =
                 recurrence(vector3D(0, 0, -10).toPoint() to .0) { (p, _) -> f(p) }
                     .take(100)
-//                    .onEach { (p, _) -> remote.paint(p); Thread.sleep(1000) }
                     .firstOrLast { (_, s) -> abs(s) < 5e-4 }
                     .first
                     .let { result ->
@@ -87,7 +85,7 @@ fun main() {
             result.let { vector3D(it[vx]!!.toDouble(), it[vy]!!.toDouble(), it[vz]!!.toDouble()) } - mobile
         }
         val (a, e, d) = errors.statistic()
-        println("${mobile.rowView()} -> ${a.rowView()} | ${e.rowView()} | ${d.rowView()}")
+        println("${map0.size} | ${mobile.rowView()} -> ${a.rowView()} | ${e.rowView()} | ${d.rowView()}")
     }
 }
 

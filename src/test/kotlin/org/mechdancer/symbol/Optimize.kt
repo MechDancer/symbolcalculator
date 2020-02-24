@@ -56,8 +56,11 @@ fun newton(error: Expression, space: VariableSpace): OptimizeStep<ExpressionVect
     return { p ->
         val g = gradient.toVector(p, space)       // 梯度
         val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
-        val k = h.normalize() dot g.normalize()   // 归一化方向系数
-        val step = if (k < 0) g else h * k + g * (1 - k)
+        val s = h dot g                           // 方向系数
+        val step = if (s < 0) g else {
+            val k = s / h.length / g.length
+            h * k + g * (1 - k)
+        }
         order // 向量转化为表达式向量
             .mapIndexed { i, v -> v to Constant(step[i]) }
             .let { p - ExpressionVector(it.toMap()) to step.length }
