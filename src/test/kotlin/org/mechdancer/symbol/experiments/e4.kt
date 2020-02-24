@@ -5,10 +5,7 @@ package org.mechdancer.symbol.experiments
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.doubleEquals
-import org.mechdancer.algebra.function.vector.div
-import org.mechdancer.algebra.function.vector.euclid
-import org.mechdancer.algebra.function.vector.minus
-import org.mechdancer.algebra.function.vector.plus
+import org.mechdancer.algebra.function.vector.*
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.algebra.implement.vector.vector3D
@@ -16,7 +13,6 @@ import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.linear.ExpressionVector
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 private fun Vector3D.toPoint() =
@@ -24,24 +20,20 @@ private fun Vector3D.toPoint() =
                            Variable("y") to Constant(y),
                            Variable("z") to Constant(z)))
 
+// 测量函数
+
+private val engine = java.util.Random()
+private fun deploy() = vector3D(engine.nextGaussian(), engine.nextGaussian(), engine.nextGaussian()) * 2e-2
+
 private const val maxMeasure = 30.0
 private val interval = maxMeasure / 2 / sqrt(2.0)
 
 // 地图
 private val BEACONS = listOf(
-    vector3D(-interval, -interval, 0),
     vector3D(-interval, 0, 0),
-    vector3D(-interval, interval, 0),
     vector3D(0, interval, 0),
-    vector3D(interval, interval, 0),
     vector3D(interval, 0, 0),
-    vector3D(interval, -interval, 0),
     vector3D(0, -interval, 0))
-
-// 测量函数
-
-private val engine = java.util.Random()
-private fun measure(d: Double) = d * (1 + 1e-3 * engine.nextGaussian()) + 5e-3 * engine.nextGaussian()
 
 fun main() {
     val remote = remoteHub("定位优化").apply {
@@ -55,14 +47,15 @@ fun main() {
     val vy = Variable("y")
     val vz = Variable("z")
 
-    val upperRange = (2 * interval).roundToInt()
+    val upperRange = interval.toInt() + 1
     for (x in 0..upperRange) for (y in x..upperRange) for (z in -3..-1) {
         // 移动标签
         val mobile = vector3D(x, y, z)
-        val map0 = BEACONS.associateWith(mobile::euclid).filterValues { it < maxMeasure }
         val errors = (1..50).map {
             // 测量
-            val map = map0.mapValues { (_, d) -> measure(d) }
+            val map = BEACONS
+                .associateWith { mobile euclid it + deploy() }
+                .filterValues { it < maxMeasure }
             // 求损失函数
             val error = map.entries.sumBy { (b, e) -> e - struct.getValue(b) `^` 2 } / map.size
             val f = dampingNewton(error, space)
@@ -85,7 +78,7 @@ fun main() {
             result.let { vector3D(it[vx]!!.toDouble(), it[vy]!!.toDouble(), it[vz]!!.toDouble()) } - mobile
         }
         val (a, e, d) = errors.statistic()
-        println("${map0.size} | ${mobile.rowView()} -> ${a.rowView()} | ${e.rowView()} | ${d.rowView()}")
+        println("${mobile.rowView()} -> ${a.rowView()} | ${e.rowView()} | ${d.rowView()}")
     }
 }
 
