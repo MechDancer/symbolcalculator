@@ -1,5 +1,3 @@
-@file:Suppress("ObjectPropertyName", "NonAsciiCharacters")
-
 package org.mechdancer.symbol.experiments
 
 import org.mechdancer.algebra.core.Vector
