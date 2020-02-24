@@ -1,5 +1,6 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.function.matrix.inverse
 import org.mechdancer.algebra.function.matrix.times
 import org.mechdancer.algebra.function.vector.dot
@@ -10,46 +11,84 @@ import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian.Companion.dfToGrad
 import org.mechdancer.symbol.linear.HessianMatrix
 import org.mechdancer.symbol.linear.VariableSpace
+import kotlin.math.abs
+import kotlin.math.sign
 
 /** 优化步骤函数 := 当前位置 -> (新位置, 实际步长) */
-typealias OptimizeStep = (ExpressionVector) -> Pair<ExpressionVector, Double>
+typealias OptimizeStep<T> = (T) -> Pair<T, Double>
 
 fun gradientDescent(
     error: Expression,
     space: VariableSpace,
-    pid: PIDLimiter
-): OptimizeStep {
-    val gradField = space.hamiltonian * error
+    alpha: Double
+): OptimizeStep<ExpressionVector> {
+    val gradient = dfToGrad(error.d(), space) // 梯度表达式
     return { p ->
-        val grad = gradField.substitute(p)
-        val l = grad.length().toDouble()
-        val k = pid(l)
-        p - grad * (k / l) to k
+        val g = gradient.substitute(p) * alpha
+        p - g to g.length().toDouble()
+    }
+}
+
+/** 一元牛顿迭代优化 */
+fun newton(error: Expression, v: Variable): OptimizeStep<Double> {
+    val df = error.d() / v.d()
+    val ddf = df.d() / v.d()
+    return { p ->
+        val g = df.substitute(v, Constant(p)).toDouble()
+        val h = g / ddf.substitute(v, Constant(p)).toDouble()
+        val step = if (h.sign != g.sign) g else h
+        p - step to abs(step)
     }
 }
 
 /**
- * 牛顿迭代优化
+ * 多元牛顿迭代优化
  *
  * @param error 损失函数
  * @param space 变量空间
  * @return 优化步骤函数
  */
-fun newton(error: Expression, space: VariableSpace): OptimizeStep {
+fun newton(error: Expression, space: VariableSpace): OptimizeStep<ExpressionVector> {
     val df = error.d()                         // 一阶全微分表达式
     val gradient = dfToGrad(df, space)         // 梯度表达式
     val hessian = HessianMatrix(df.d(), space) // 海森矩阵表达式
     val order = space.variables.toList()       // 向量维度顺序
     return { p ->
-        val step = run {
-            val g = gradient.toVector(p, space)       // 梯度
-            val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
-            val k = h.normalize() dot g.normalize()   // 归一化方向系数
-            h * k + g * (1 - k)
-        }
+        val g = gradient.toVector(p, space)       // 梯度
+        val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
+        val k = h.normalize() dot g.normalize()   // 归一化方向系数
+        val step = if (k < 0) g else h * k + g * (1 - k)
         order // 向量转化为表达式向量
             .mapIndexed { i, v -> v to Constant(step[i]) }
             .let { p - ExpressionVector(it.toMap()) to step.length }
+    }
+}
+
+/**
+ * 阻尼牛顿迭代优化
+ *
+ * @param error 损失函数
+ * @param space 变量空间
+ * @return 优化步骤函数
+ */
+fun dampingNewton(error: Expression, space: VariableSpace): OptimizeStep<ExpressionVector> {
+    val df = error.d()                         // 一阶全微分表达式
+    val gradient = dfToGrad(df, space)         // 梯度表达式
+    val hessian = HessianMatrix(df.d(), space) // 海森矩阵表达式
+    val order = space.variables.toList()       // 向量维度顺序
+    val l by variable
+    return { p ->
+        val g = gradient.toVector(p, space)       // 梯度
+        val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
+        // 确定最优下降方向
+        val inc = if (g dot h < 0) g else h
+        val dir = inc.normalize()
+        // 确定最优下降率
+        val lh = order.order(dir).expressions.mapValues { (_, e) -> e * l }.let(::ExpressionVector)
+        val fh = newton(error.substitute(p - lh), l)
+        val lo = recurrence(inc.length to .0) { (p, _) -> fh(p) }.take(50).firstOrLast { (_, s) -> s < 5e-4 }.first
+        val step = if (lo < 0) g else dir * lo
+        p - order.order(step) to step.length
     }
 }
 
@@ -107,3 +146,8 @@ class PIDLimiter(
         sum = .0
     }
 }
+
+fun List<Variable>.order(vector: Vector) =
+    mapIndexed { i, v -> v to Constant(vector[i]) }
+        .toMap()
+        .let(::ExpressionVector)
