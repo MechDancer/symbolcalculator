@@ -25,13 +25,7 @@ private val BEACONS = listOf(
     vector3D(interval, interval, 0),
     vector3D(0, interval, 0),
     vector3D(2 * interval, 0, 0),
-    vector3D(2 * interval, interval, 0),
-
-    vector3D(3 * interval, 0, 0),
-    vector3D(3 * interval, interval, 0))
-
-//    vector3D(1 * interval, .5 * interval, -2),
-//    vector3D(2 * interval, .5 * interval, -2))
+    vector3D(2 * interval, interval, 0))
 
 private val ZEROS = variables("x0", "y0", "z0", "y1", "z1", "z2")
 
@@ -60,21 +54,21 @@ fun main() {
 
     val remote = remoteHub("定位优化").apply { openAllNetworks(); println(networksInfo()) }
 
-    val f = dampingNewton(error, space)
-    val init = space.ordinaryField.expressions.mapValues { Constant(1.0) }.let(::ExpressionVector)
+    val f = /*dampingNewton(error, space)*/  gradientDescent(error, space, 3.2)
+    var i = 1
+    val init = space.ordinaryField.expressions.mapValues { Constant(++i * 3.0) }.let(::ExpressionVector)
 
     println(BEACONS.joinToString("\n", transform = Vector::rowView))
     remote.paintMap(init)
 
     recurrence(init to .0) { (p, _) -> f(p) }
-        .take(1000)
         .withIndex()
-        .firstOrLast { (i, t) ->
+        .onEach { (i, t) ->
             val (p, s) = t
             remote.paintMap(p)
             println("$i\t$s")
-            i > 600 && s < 1e-6
         }
+        .firstOrLast { (_, t) -> t.second < 1e-6 }
         .value
         .first
         .also(::printError)
@@ -88,8 +82,15 @@ fun ExpressionVector.toPoints() =
         vector3D(x, y, z)
     }
 
-fun RemoteHub.paintMap(field: ExpressionVector) =
-    field.toPoints().forEachIndexed { i, (x, y, z) -> paint("标签$i", x, y, z) }
+private val edges = listOf(
+    listOf(0, 1, 2, 3, 0),
+    listOf(1, 4, 5, 2))
+
+fun RemoteHub.paintMap(field: ExpressionVector) {
+    val points = field.toPoints()
+    points.forEachIndexed { i, (x, y, z) -> paint("标签$i", x, y, z) }
+    paintFrame3("连线", edges.map { list -> list.map { points[it] } })
+}
 
 fun printMap(field: ExpressionVector) =
     field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v.rowView()}") }

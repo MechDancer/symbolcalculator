@@ -1,5 +1,6 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.dependency.must
 import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.protocol.writeEnd
@@ -80,6 +81,27 @@ fun RemoteHub.paint(
         writeFloat(x.toFloat())
         writeFloat(y.toFloat())
         writeFloat(z.toFloat())
+    }
+}
+
+/**
+ * 画三维信号
+ */
+fun RemoteHub.paintFrame3(
+    topic: String,
+    list: Iterable<Iterable<Vector3D>>
+) = paint(topic, 3 or FRAME_MASK) {
+    DataOutputStream(this).apply {
+        for (group in list) {
+            for ((x, y, z) in group) {
+                writeFloat(x.toFloat())
+                writeFloat(y.toFloat())
+                writeFloat(z.toFloat())
+            }
+            writeFloat(Float.NaN)
+            writeFloat(Float.NaN)
+            writeFloat(Float.NaN)
+        }
     }
 }
 
