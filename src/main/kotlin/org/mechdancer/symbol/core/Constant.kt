@@ -1,4 +1,4 @@
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
 import java.text.DecimalFormat
 import kotlin.math.ln
@@ -18,7 +18,6 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
-
     override fun toTex(): Tex = toString()
 
     @Suppress("ObjectPropertyName")
@@ -31,6 +30,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
         val `1` = Constant(1.0)
         val `-1` = Constant(-1.0)
 
-        fun ln(x: Constant) = Constant(ln(x.value))
+        fun ln(x: Constant) =
+            Constant(ln(x.value))
     }
 }

@@ -3,6 +3,10 @@ package org.mechdancer.symbol.linear
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Power
+import org.mechdancer.symbol.core.Variable
 import kotlin.streams.asSequence
 
 /** 表达式向量 */

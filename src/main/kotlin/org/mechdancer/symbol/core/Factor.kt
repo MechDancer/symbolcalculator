@@ -1,11 +1,11 @@
 @file:Suppress("MemberVisibilityCanBePrivate")
 
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
-import org.mechdancer.symbol.Constant.Companion.`0`
-import org.mechdancer.symbol.Constant.Companion.`1`
-import org.mechdancer.symbol.Constant.Companion.`-1`
-import org.mechdancer.symbol.Constant.Companion.ln
+import org.mechdancer.symbol.core.Constant.Companion.`0`
+import org.mechdancer.symbol.core.Constant.Companion.`1`
+import org.mechdancer.symbol.core.Constant.Companion.`-1`
+import org.mechdancer.symbol.core.Constant.Companion.ln
 
 /**
  * 因子，作为积式成分而不可合并的对象
@@ -53,7 +53,8 @@ sealed class Factor : FactorExpression {
 class Power private constructor(
     override val member: BaseExpression,
     val exponent: Constant
-) : Factor(), ExponentialExpression {
+) : Factor(),
+    ExponentialExpression {
     init {
         // 作为导数算子，阶数只能是整数
         if (member is Differential) require(exponent.value == exponent.value.toInt().toDouble())
@@ -61,7 +62,6 @@ class Power private constructor(
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substitute(e: Expression) = get(e, exponent)
-
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
 
@@ -104,7 +104,8 @@ class Power private constructor(
 class Exponential private constructor(
     val base: Constant,
     override val member: ExponentialExpression
-) : Factor(), BaseExpression, ExponentialExpression {
+) : Factor(), BaseExpression,
+    ExponentialExpression {
     override val df by lazy { this * ln(base) }
     override fun substitute(e: Expression) = get(base, e)
 
@@ -126,7 +127,9 @@ class Exponential private constructor(
                     is Product               -> Exponential(b pow e.times, e.resetTimes(`1`))
                     is ExponentialExpression -> Exponential(b, e)
                     is Ln                    -> Power[e.member, ln(b)]
-                    is Sum                   -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
+                    is Sum                   -> Product[e.products.map {
+                        get(b, it)
+                    }] * (b pow e.tail)
                     else                     -> throw UnsupportedOperationException()
                 }
             }
@@ -136,7 +139,8 @@ class Exponential private constructor(
 /** 自然对数因子 */
 class Ln private constructor(
     override val member: LnExpression
-) : Factor(), BaseExpression, LnExpression {
+) : Factor(), BaseExpression,
+    LnExpression {
     override val df by lazy { Power[member, `-1`] }
     override fun substitute(e: Expression) = get(e)
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
@@ -157,7 +161,7 @@ class Ln private constructor(
             when (e) {
                 is Constant         -> ln(e)
                 is FactorExpression -> simplify(e)
-                is Product          -> Sum[e.factors.map(::simplify)] + ln(e.times)
+                is Product          -> Sum[e.factors.map(Builder::simplify)] + ln(e.times)
                 is Sum              -> Ln(e)
                 else                -> throw UnsupportedOperationException()
             }

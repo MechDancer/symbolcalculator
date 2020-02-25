@@ -7,6 +7,7 @@ import org.mechdancer.remote.resources.Command
 import org.mechdancer.remote.resources.MulticastSockets
 import org.mechdancer.remote.resources.Name
 import org.mechdancer.remote.resources.Networks
+import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.linear.ExpressionVector
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream

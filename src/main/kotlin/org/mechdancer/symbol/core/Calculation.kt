@@ -1,7 +1,7 @@
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
-import org.mechdancer.symbol.Constant.Companion.`0`
-import org.mechdancer.symbol.Constant.Companion.`1`
+import org.mechdancer.symbol.core.Constant.Companion.`0`
+import org.mechdancer.symbol.core.Constant.Companion.`1`
 import kotlin.math.sign
 
 /** 运算 */
@@ -74,6 +74,7 @@ class Sum private constructor(
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
+
         operator fun get(list: Collection<Expression>) =
             when (list.size) {
                 0    -> `0`
@@ -87,12 +88,15 @@ class Sum private constructor(
                     // 积式与常数相乘必然还是积式
                     val products = collector
                         .asSequence()
-                        .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
+                        .map { (e, k) ->
+                            Product[e, Constant(k)] as ProductExpression
+                        }
                         .toSet()
                     when {
                         products.isEmpty()               -> Constant(tail)
                         tail == .0 && products.size == 1 -> products.first()
-                        else                             -> Sum(products, Constant(tail))
+                        else                             -> Sum(products,
+                                                                Constant(tail))
                     }
                 }
             }
@@ -146,7 +150,7 @@ class Product private constructor(
     override fun format(which: (Expression) -> String) =
         buildString {
             if (times != `1`) append("${which(times)} ")
-            val groups = factors.groupBy(::isDifferential)
+            val groups = factors.groupBy(Builder::isDifferential)
             groups[false]?.let { append(it.joinToString(" ", transform = which)) }
             if (groups.size == 2) append(" ")
             groups[true]?.let { append(it.joinToString(" ", transform = which)) }
@@ -158,6 +162,7 @@ class Product private constructor(
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
+
         operator fun get(list: Collection<Expression>): Expression {
             return when (list.size) {
                 0    -> throw UnsupportedOperationException()
@@ -229,7 +234,10 @@ class Product private constructor(
                             if (tail == 1.0 && factors.size == 1)
                                 factors.first()
                             else
-                                Product(factors.map { it as FactorExpression }.toSet(), Constant(tail))
+                                Product(factors
+                                            .map { it as FactorExpression }
+                                            .toSet(),
+                                        Constant(tail))
                         } ?: Constant(tail)
                         groups[false]?.let { Product[Product[it], product] } ?: product
                     }

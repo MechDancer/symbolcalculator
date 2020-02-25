@@ -1,4 +1,4 @@
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
 /** 名为 [name] 的变量 */
 inline class Variable(private val name: String)

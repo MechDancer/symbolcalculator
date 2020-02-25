@@ -9,6 +9,8 @@ import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.*
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import kotlin.math.abs
 import kotlin.math.sqrt

@@ -1,5 +1,8 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
 import kotlin.properties.ReadOnlyProperty
@@ -38,7 +41,9 @@ fun variables(vararg names: String) =
     VariableSpace(names.map(::Variable).toSet())
 
 fun point(vararg pairs: Pair<String, Number>) =
-    ExpressionVector(pairs.associate { (v, x) -> Variable(v) to Constant(x.toDouble()) })
+    ExpressionVector(pairs.associate { (v, x) ->
+        Variable(v) to Constant(x.toDouble())
+    })
 
 fun field(vararg pairs: Pair<String, Expression>) =
     ExpressionVector(pairs.associate { (v, e) -> Variable(v) to e })

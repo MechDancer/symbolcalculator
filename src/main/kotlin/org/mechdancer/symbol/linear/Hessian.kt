@@ -1,6 +1,6 @@
 package org.mechdancer.symbol.linear
 
-import org.mechdancer.symbol.Expression
+import org.mechdancer.symbol.core.Expression
 
 /** 海森算子 */
 inline class Hessian(val space: VariableSpace) {

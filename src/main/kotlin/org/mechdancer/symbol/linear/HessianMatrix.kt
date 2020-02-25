@@ -2,7 +2,12 @@ package org.mechdancer.symbol.linear
 
 import org.mechdancer.algebra.core.Matrix
 import org.mechdancer.algebra.implement.matrix.builder.listMatrixOf
-import org.mechdancer.symbol.*
+import org.mechdancer.symbol.core.Differential
+import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Variable
+import org.mechdancer.symbol.div
+import org.mechdancer.symbol.substitute
+import org.mechdancer.symbol.toDouble
 import kotlin.streams.toList
 
 /** 海森矩阵 */

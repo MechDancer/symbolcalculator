@@ -1,5 +1,7 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.linear.ExpressionVector
 
 // 代入

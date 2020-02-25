@@ -1,6 +1,6 @@
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
-import org.mechdancer.symbol.Constant.Companion.`1`
+import org.mechdancer.symbol.core.Constant.Companion.`1`
 
 /** 可微表达式 */
 interface Expression {

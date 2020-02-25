@@ -2,7 +2,8 @@
 
 package org.mechdancer.symbol
 
-import org.mechdancer.symbol.Constant.Companion.`-1`
+import org.mechdancer.symbol.core.*
+import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import kotlin.math.E
 
 /** 求表达式全微分 */

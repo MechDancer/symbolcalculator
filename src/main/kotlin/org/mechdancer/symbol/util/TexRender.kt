@@ -1,7 +1,7 @@
 package org.mechdancer.symbol.util
 
-import org.mechdancer.symbol.Expression
-import org.mechdancer.symbol.Tex
+import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Tex
 import java.io.File
 import kotlin.math.abs
 

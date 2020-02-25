@@ -1,4 +1,4 @@
-package org.mechdancer.symbol
+package org.mechdancer.symbol.core
 
 inline class Differential(val variable: Variable)
     : FactorExpression,

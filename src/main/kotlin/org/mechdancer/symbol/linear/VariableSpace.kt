@@ -1,6 +1,8 @@
 package org.mechdancer.symbol.linear
 
-import org.mechdancer.symbol.Variable
+import org.mechdancer.algebra.core.Vector
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Variable
 
 /** 变量空间 */
 inline class VariableSpace(val variables: Set<Variable>) {
@@ -15,6 +17,13 @@ inline class VariableSpace(val variables: Set<Variable>) {
 
     /** 此空间上的海森算子 */
     val hessian get() = Hessian(this)
+
+    /** 向量变为表达式向量 */
+    fun order(vector: Vector) =
+        variables
+            .mapIndexed { i, v -> v to Constant(vector[i]) }
+            .toMap()
+            .let(::ExpressionVector)
 
     /** 求变量空间的交空间 */
     operator fun times(others: VariableSpace) = VariableSpace(variables intersect others.variables)
