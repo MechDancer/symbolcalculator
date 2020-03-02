@@ -60,24 +60,26 @@ fun main() {
         // 移动标签
         val mobile = vector3D(x, y, z)
         val map0 = BEACONS.associateWith(mobile::euclid).filterValues { it < maxMeasure }
-        val errors = (1..50).map {
+        val errors = (1..100).map {
             // 测量
             val map = map0.mapValues { (_, d) -> measure(d) }
             // 求损失函数
             val error = map.entries.sumBy { (b, e) -> e - struct.getValue(b) `^` 2 } / map.size
+
             val f = dampingNewton(error, space)
+            remote.paint("目标点", mobile.x, mobile.y, mobile.z)
+            remote.paint("鞍点", mobile.x, mobile.y, 0)
             //求解
             val result =
-                recurrence(vector3D(0, 0, -10).toPoint() to .0) { (p, _) -> f(p) }
-                    .take(100)
+                recurrence(vector3D(0, 0, -5).toPoint() to .0) { (p, _) -> f(p) }
                     .firstOrLast { (_, s) -> abs(s) < 5e-4 }
                     .first
                     .let { result ->
-                        val zz = result[Variable("z")]!!.toDouble()
-                        result.takeIf { zz > -.1 }
+                        val zz = result[vz]!!.toDouble()
+                        result.takeIf { zz > 0 }
                             ?.expressions
                             ?.toMutableMap()
-                            ?.also { it[Variable("z")] = Constant(-zz) }
+                            ?.also { it[vz] = Constant(-zz) }
                             ?.let(::ExpressionVector)
                         ?: result
                     }

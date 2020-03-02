@@ -54,7 +54,7 @@ fun main() {
 
     val remote = remoteHub("定位优化").apply { openAllNetworks(); println(networksInfo()) }
 
-    val f = /*dampingNewton(error, space)*/  gradientDescent(error, space, 3.2)
+    val f = dampingNewton(error, space)
     var i = 1
     val init = space.ordinaryField.expressions.mapValues { Constant(++i * 3.0) }.let(::ExpressionVector)
 

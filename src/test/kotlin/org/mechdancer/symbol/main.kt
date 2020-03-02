@@ -3,7 +3,6 @@ package org.mechdancer.symbol
 fun main() {
     val x by variable
     val y by variable
-
     run {
         val f = sqrt(x * x + y) + 1 `^` 2
 

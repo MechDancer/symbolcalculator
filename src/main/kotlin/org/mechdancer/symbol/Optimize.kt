@@ -6,6 +6,7 @@ import org.mechdancer.algebra.function.vector.dot
 import org.mechdancer.algebra.function.vector.normalize
 import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.function.vector.times
+import org.mechdancer.algebra.implement.vector.listVectorOfZero
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
@@ -30,11 +31,11 @@ typealias OptimizeStep<T> = (T) -> Pair<T, Double>
 fun gradientDescent(
     error: Expression,
     space: VariableSpace,
-    alpha: Double
+    alpha: (Double) -> Double
 ): OptimizeStep<ExpressionVector> {
     val gradient = dfToGrad(error.d(), space) // 梯度表达式
     return { p ->
-        val g = gradient.substitute(p) * alpha
+        val g = gradient.substitute(p).let { it * it.length().toDouble().let { alpha(it) / it } }
         p - g to g.length().toDouble()
     }
 }
@@ -95,24 +96,36 @@ fun newton(
  */
 fun dampingNewton(
     error: Expression,
-    space: VariableSpace
+    space: VariableSpace,
+    kgrad: Double = .5
 ): OptimizeStep<ExpressionVector> {
     val df = error.d()                         // 一阶全微分表达式
     val gradient = dfToGrad(df, space)         // 梯度表达式
     val hessian = HessianMatrix(df.d(), space) // 海森矩阵表达式
     val l by variable                          // 步长变量
+
+    val zero = listVectorOfZero(space.dim)
+    var m = zero
     return { p ->
         val g = gradient.toVector(p, space)       // 梯度
         val h = hessian.toMatrix(p).inverse() * g // 海森极值增量
         // 确定最优下降方向
-        val inc = if (g dot h < 0) g else h
+        val inc = if (g dot h < 0) {
+            m = m * (kgrad - kgrad * (m.normalize() dot g.normalize())) + g
+            m
+        } else {
+            m = zero
+            h
+        }
         val dir = inc.normalize()
         // 确定最优下降率
         val lh = space.order(dir).expressions.mapValues { (_, e) -> e * l }.let(::ExpressionVector)
         val fh = newton(error.substitute(p - lh), l)
-        val lo = recurrence(inc.length to .0) { (p, _) -> fh(p) }.take(50).firstOrLast { (_, s) -> s < 5e-4 }.first
-        val step = if (lo < 0) g else dir * lo
-        p - space.order(step) to step.length
+        val init = inc.length
+        val lo = recurrence(init to .0) { (p, _) -> fh(p) }
+            .take(100)
+            .firstOrLast { (_, s) -> s < init * 1e-9 }.first
+        p - space.order(dir * lo) to lo
     }
 }
 

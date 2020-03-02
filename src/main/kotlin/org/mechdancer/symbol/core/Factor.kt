@@ -6,6 +6,7 @@ import org.mechdancer.symbol.core.Constant.Companion.`0`
 import org.mechdancer.symbol.core.Constant.Companion.`1`
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import org.mechdancer.symbol.core.Constant.Companion.ln
+import kotlin.math.sign
 
 /**
  * 因子，作为积式成分而不可合并的对象
@@ -104,7 +105,8 @@ class Power private constructor(
 class Exponential private constructor(
     val base: Constant,
     override val member: ExponentialExpression
-) : Factor(), BaseExpression,
+) : Factor(),
+    BaseExpression,
     ExponentialExpression {
     override val df by lazy { this * ln(base) }
     override fun substitute(e: Expression) = get(base, e)
@@ -139,7 +141,8 @@ class Exponential private constructor(
 /** 自然对数因子 */
 class Ln private constructor(
     override val member: LnExpression
-) : Factor(), BaseExpression,
+) : Factor(),
+    BaseExpression,
     LnExpression {
     override val df by lazy { Power[member, `-1`] }
     override fun substitute(e: Expression) = get(e)
@@ -161,7 +164,13 @@ class Ln private constructor(
             when (e) {
                 is Constant         -> ln(e)
                 is FactorExpression -> simplify(e)
-                is Product          -> Sum[e.factors.map(Builder::simplify)] + ln(e.times)
+                is Product          -> {
+                    val groups = e.factors.groupBy { it is Exponential }
+                    val exps = groups[true]?.map { it as Exponential; get(it.member) * ln(it.base) } ?: emptyList()
+                    val others = groups[false] ?: emptyList()
+                    val sign = Constant(e.times.value.sign)
+                    Sum[Ln((Product[others] * sign) as LnExpression), Sum[exps], ln(e.times / sign)]
+                }
                 is Sum              -> Ln(e)
                 else                -> throw UnsupportedOperationException()
             }

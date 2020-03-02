@@ -2,6 +2,7 @@ package org.mechdancer.symbol.core
 
 import org.mechdancer.symbol.core.Constant.Companion.`0`
 import org.mechdancer.symbol.core.Constant.Companion.`1`
+import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import kotlin.math.sign
 
 /** 运算 */
@@ -129,7 +130,8 @@ class Product private constructor(
     internal val times: Constant
 ) : Calculation(),
     ProductExpression,
-    ExponentialExpression {
+    ExponentialExpression,
+    LnExpression {
     override fun d(): Expression =
         factors.indices
             .map { i ->
@@ -149,7 +151,11 @@ class Product private constructor(
 
     override fun format(which: (Expression) -> String) =
         buildString {
-            if (times != `1`) append("${which(times)} ")
+            when (times) {
+                `1`  -> Unit
+                `-1` -> append("-")
+                else -> append("${which(times)} ")
+            }
             val groups = factors.groupBy(Builder::isDifferential)
             groups[false]?.let { append(it.joinToString(" ", transform = which)) }
             if (groups.size == 2) append(" ")
