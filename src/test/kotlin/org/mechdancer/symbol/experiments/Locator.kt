@@ -34,7 +34,7 @@ class Locator(beacons: List<Vector3D>) {
         val (result, _) = recurrence(init to .0) { (p, _) -> f(p) }.firstOrLast { (_, s) -> s < 5e-6 }
         val new = 3 - ln(error[result])
         val old = 3 - ln(error[init])
-        val p = result.toVector()
+        val p = result.toVector().run { if (z > 0) copy(z = -this.z) else this }
         when (state) {
             Preparing -> {
                 last = when {
