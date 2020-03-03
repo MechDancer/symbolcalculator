@@ -83,3 +83,25 @@ fun <T> Array<T>.productBy(block: (T) -> Expression) = Product[map(block)]
 // 其他
 
 fun Expression.toDouble() = (this as Constant).value
+
+/** 递推计算 */
+fun <T> recurrence(init: T, block: (T) -> T) =
+    sequence {
+        var t = init
+        while (true) {
+            t = block(t)
+            yield(t)
+        }
+    }
+
+/** 收敛或退出 */
+inline fun <T : Any> Sequence<T>.firstOrLast(
+    block: (T) -> Boolean
+): T {
+    var last: T? = null
+    for (t in this) {
+        if (block(t)) return t
+        last = t
+    }
+    return last ?: throw NoSuchElementException("Sequence is empty.")
+}

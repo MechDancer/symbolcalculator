@@ -13,6 +13,7 @@ import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.experiments.Locator.State.Preparing
 import org.mechdancer.symbol.experiments.Locator.State.Working
 import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.optimize.dampingNewton
 import kotlin.math.ln
 
 class Locator(beacons: List<Vector3D>) {
@@ -30,14 +31,12 @@ class Locator(beacons: List<Vector3D>) {
                         .filterIsInstance<FunctionExpression>()
                         .takeIf { it.size >= 3 }
                         ?.let { it.sum() / it.size }
-                    ?: run {
-                        state = Preparing
-                        return null
-                    }
+                    ?: return run { state = Preparing; null }
         val f = dampingNewton(error, space)
 
         val init = last.toPoint()
-        val (result, _) = recurrence(init to .0) { (p, _) -> f(p) }.firstOrLast { (_, s) -> s < 5e-6 }
+        val (result, _) = recurrence(init to .0) { (p, _) -> f(p) }
+            .firstOrLast { (_, s) -> s < 5e-6 }
         val new = 3 - ln(error[result])
         val old = 3 - ln(error[init])
         val p = result.toVector().run { if (z > 0) copy(z = -this.z) else this }

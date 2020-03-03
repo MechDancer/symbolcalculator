@@ -7,6 +7,7 @@ import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.optimize.dampingNewton
 import java.util.*
 import kotlin.math.abs
 
