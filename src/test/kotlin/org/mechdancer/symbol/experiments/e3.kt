@@ -3,8 +3,11 @@ package org.mechdancer.symbol.experiments
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.doubleEquals
+import org.mechdancer.algebra.function.matrix.times
 import org.mechdancer.algebra.function.vector.*
+import org.mechdancer.algebra.implement.matrix.builder.matrix
 import org.mechdancer.algebra.implement.vector.Vector3D
+import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.remote.presets.remoteHub
@@ -15,15 +18,33 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-private const val maxMeasure = 30.0
-private val interval = maxMeasure / 2 / sqrt(2.0) * .99
+private const val maxMeasure = 15.0
+private val interval = maxMeasure / sqrt(2.0) * .99
+//private val upperRange = (.8 * interval).roundToInt()
+//private val zList = listOf(-3.2, -2.4, -1.6)
+//
+//// 地图
+//private val beacons =
+//    (matrix {
+//        row(-1, -1, 0)
+//        row(-1, +1, 0)
+//        row(+1, +1, 0)
+//        row(+1, -1, 0)
+//    } * (interval / 2)).rows.map(Vector::to3D)
+
+private val upperRange = (.8 * interval).roundToInt()
+private val zList = listOf(-3.2, -2.4, -1.6)
 
 // 地图
-private val beacons = listOf(
-    vector3D(-interval, -interval, 0),
-    vector3D(-interval, interval, 0),
-    vector3D(interval, interval, 0),
-    vector3D(interval, -interval, 0))
+private val beacons =
+    (matrix {
+        row(-2, -1, 0)
+        row(-2, +1, 0)
+        row(+0, +1, 0)
+        row(+0, -1, 0)
+        row(+2, -1, 0)
+        row(+2, +1, 0)
+    } * (interval / 2)).rows.map(Vector::to3D)
 
 // 噪声
 
@@ -40,20 +61,18 @@ fun main() {
     }
     val locator = Locator(beacons)
 
-    val upperRange = (1.5 * interval).roundToInt()
-    val zList = listOf(-2.6, -2.3, -2.0)
-    for (x in 0..upperRange)
-        for (y in if (x % 2 == 0) x..upperRange else upperRange downTo x)
-            for (z in if ((y - x) % 2 == 0) zList else zList.asReversed()) {
+    for (x in 0..upperRange * 2)
+        for (y in if (x % 2 == 0) x / 2..upperRange else upperRange downTo x / 2)
+            for (z in if (y % 2 == 0) zList else zList.asReversed()) {
                 val mobile = vector3D(x, y, z)
-                val errors = (1..100).map {
+                val errors = (1..20).map {
                     val map = beacons.map(::deploy)
-                    val result = map
-                        .map { p -> measure(p euclid mobile).takeIf { it < maxMeasure } ?: -1.0 }
-                        .let(locator::invoke)
+                    val measures = map.map { p -> measure(p euclid mobile).takeIf { it < maxMeasure } ?: -1.0 }
+                    val result = locator(measures)!!
 
-                    remote.paintFrame3("目标", map.map { listOf(mobile, it) })
-                    remote.paintFrame3("定位", beacons.map { listOf(result, it) })
+                    remote.paintFrame3("目标", map.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(mobile, it) })
+                    remote
+                        .paintFrame3("定位", beacons.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(result, it) })
 
                     result - mobile
                 }

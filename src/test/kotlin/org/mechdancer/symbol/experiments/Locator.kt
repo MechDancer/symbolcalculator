@@ -6,6 +6,7 @@ import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
@@ -23,12 +24,17 @@ class Locator(beacons: List<Vector3D>) {
     private var last = vector3D(0, 0, -3)
     private val struct = beacons.map { (space.ordinaryField - it.toPoint()).length() }
 
-    operator fun invoke(list: List<Double>): Vector3D {
+    operator fun invoke(list: List<Double>): Vector3D? {
         val error = struct
-            .zip(list) { e, l -> if (l > 0) (e - l) `^` 2 else Constant.`-1` }
-            .filterIsInstance<FunctionExpression>()
-            .let { it.sum() / it.size }
-        val f = dampingNewton(error, space, .2)
+                        .zip(list) { e, l -> if (l > 0) (e - l) `^` 2 else `-1` }
+                        .filterIsInstance<FunctionExpression>()
+                        .takeIf { it.size >= 3 }
+                        ?.let { it.sum() / it.size }
+                    ?: run {
+                        state = Preparing
+                        return null
+                    }
+        val f = dampingNewton(error, space)
 
         val init = last.toPoint()
         val (result, _) = recurrence(init to .0) { (p, _) -> f(p) }.firstOrLast { (_, s) -> s < 5e-6 }
@@ -38,7 +44,7 @@ class Locator(beacons: List<Vector3D>) {
         when (state) {
             Preparing -> {
                 last = when {
-                    new > 3   -> {
+                    new > 6   -> {
                         state = Working
                         (old / new).let { k -> last * k + p * (1 - k) }
                     }
