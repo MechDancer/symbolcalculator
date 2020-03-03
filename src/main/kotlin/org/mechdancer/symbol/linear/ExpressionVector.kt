@@ -27,6 +27,12 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
 
     fun length() = expressions.entries.sumBy { (_, e) -> Power[e, Constant(2.0)] }.let(::sqrt)
 
+    inline fun map(block: (Expression) -> Expression) =
+        expressions.mapValues { (_, e) -> block(e) }.let(::ExpressionVector)
+
+    fun substitute(from: Expression, to: Expression) =
+        map { it.substitute(from, to) }
+
     fun substitute(others: ExpressionVector) =
         others.expressions.entries.fold(expressions) { r, (v, e) ->
             r.mapValues { (_, e0) -> e0.substitute(v, e) }

@@ -3,6 +3,8 @@ package org.mechdancer.symbol.experiments
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.core.rowView
 import org.mechdancer.algebra.function.vector.euclid
+import org.mechdancer.algebra.function.vector.plus
+import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.presets.remoteHub
@@ -12,33 +14,44 @@ import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
-import org.mechdancer.symbol.optimize.sgd
+import org.mechdancer.symbol.optimize.gradientDescent
+import org.mechdancer.symbol.optimize.stochasticGD
 import kotlin.math.sqrt
 
 // 地图
 
-private val engine = java.util.Random()
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(5.0) * .99
+private val interval = maxMeasure / sqrt(4.0) * .9
 
-private val BEACONS = listOf(
-    vector3D(0, 0, 0),
-    vector3D(interval, 0, 0),
-    vector3D(interval, interval, 0),
-    vector3D(0, interval, 0),
-    vector3D(2 * interval, 0, 0),
-    vector3D(2 * interval, interval, 0))
+private val engine = java.util.Random()
+private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
+private val multiplier = 1e-3 * engine.nextGaussian() + 1
+private fun measure(d: Double) = d * multiplier + 5e-3 * engine.nextGaussian()
+private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
-private val ZEROS = variables("x0", "y0", "z0")
+private const val beaconCount = 6
+private const val mobileCount = 0
 
-private fun measure(d: Double) = d * (1 + 1e-3 * engine.nextGaussian()) + 5e-3 * engine.nextGaussian()
+private val beacons =
+    sequence {
+        for (i in 0 until beaconCount / 2) {
+            yield(vector3D(i * interval, 0, 0))
+            yield(vector3D(i * interval, interval, 0))
+        }
+        val l = 2 * interval / (mobileCount + 1)
+        for (i in 1..mobileCount) {
+            yield(vector3D(l * i, interval * .1, -2))
+            yield(vector3D(l * i, interval * .9, -2))
+        }
+    }.map(::deploy).toList()
 
 fun main() {
-    val measures = BEACONS.map { a -> BEACONS.map { b -> measure(a euclid b) } }
-    val space = BEACONS.mapIndexed { i, _ -> variables("x$i", "y$i", "z$i").variables }
-                    .flatten()
-                    .toSet()
-                    .let(::VariableSpace) - ZEROS
+    val measures = beacons
+        .map { a -> beacons.map { b -> measure(a euclid b) } }
+    val space = beacons.mapIndexed { i, _ -> variables("x$i", "y$i", "z$i").variables }
+        .flatten()
+        .toSet()
+        .let(::VariableSpace)
     val samples = measures
         .mapIndexed { i, distances ->
             distances.mapIndexed { j, distance ->
@@ -51,17 +64,19 @@ fun main() {
             }
         }
         .flatten()
-        .map { it.substitute { for (v in ZEROS.variables) this[v] = 0 } }
         .filterIsInstance<FunctionExpression>()
 
-    val f = sgd(samples, space) { .01 * it }
-    var i = 1
-    val init = space.ordinaryField.expressions.mapValues { Constant(++i * 3.0) }.let(::ExpressionVector)
+    val f = stochasticGD(samples) { gradientDescent(it, space) }
+    val init = space.ordinaryField.map { Constant(gaussian(maxMeasure)) }
 
-    println(BEACONS.joinToString("\n", transform = Vector::rowView))
-    val remote = remoteHub("定位优化").apply { openAllNetworks(); println(networksInfo()) }
-    remote.paintFrame3("目标", edges.map { list -> list.map { BEACONS[it] } })
-    remote.paintMap(init)
+    println(beacons.joinToString("\n", transform = Vector::rowView))
+    val remote = remoteHub("定位优化").apply {
+        openAllNetworks()
+        println(networksInfo())
+        paintFrame3("目标", edges.map { list -> list.map { beacons[it] } })
+        paintFrame3("其他目标", listOf(beacons.takeLast(mobileCount * 2)))
+        paintMap(init)
+    }
 
     recurrence(init to .0) { (p, _) -> f(p) }
         .onEach { (p, _) -> remote.paintMap(p) }
@@ -71,7 +86,7 @@ fun main() {
 }
 
 private fun ExpressionVector.toPoints() =
-    BEACONS.indices.map { i ->
+    beacons.indices.map { i ->
         val x = this[Variable("x$i")]?.toDouble() ?: .0
         val y = this[Variable("y$i")]?.toDouble() ?: .0
         val z = this[Variable("z$i")]?.toDouble() ?: .0
@@ -79,13 +94,15 @@ private fun ExpressionVector.toPoints() =
     }
 
 private val edges = listOf(
-    listOf(0, 1, 2, 3, 0),
-    listOf(1, 4, 5, 2))
+    listOf(0, 1),
+    listOf(0, 2, 3, 1),
+    listOf(2, 4, 5, 3))
 
 private fun RemoteHub.paintMap(field: ExpressionVector) {
     val points = field.toPoints()
     paintFrame3("连线", edges.map { list -> list.map { points[it] } })
+    paintFrame3("其他", listOf(points.takeLast(mobileCount * 2)))
 }
 
 private fun printError(field: ExpressionVector) =
-    field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v euclid BEACONS[i]}") }
+    field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v euclid beacons[i]}") }
