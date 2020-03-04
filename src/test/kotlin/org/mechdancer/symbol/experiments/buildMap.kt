@@ -17,6 +17,7 @@ import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.optimize.fastestBatchGD
 import org.mechdancer.symbol.optimize.recurrence
 import org.mechdancer.symbol.optimize.stochasticGD
+import kotlin.concurrent.thread
 import kotlin.math.sqrt
 
 // 地图
@@ -47,13 +48,12 @@ private val beacons =
     }.map(::deploy).toList()
 
 fun main() {
-    val measures = beacons
-        .map { a -> beacons.map { b -> measure(a euclid b) } }
+    val measures = beacons.map { a -> beacons.map { b -> measure(a euclid b) } }
     val space = beacons.mapIndexed { i, _ -> variables("x$i", "y$i", "z$i").variables }
         .flatten()
         .toSet()
         .let(::VariableSpace)
-    val samples = measures
+    val errors = measures
         .mapIndexed { i, distances ->
             distances.mapIndexed { j, distance ->
                 if (distance < maxMeasure)
@@ -64,8 +64,8 @@ fun main() {
         }
         .flatten()
         .filterIsInstance<FunctionExpression>()
+        .run { map { (it `^` 2) / (2 * size) } }
 
-    val f = stochasticGD(samples) { fastestBatchGD(it, space) }
     val init = space.ordinaryField.map {
         Constant(
             if ((it as Variable).name.drop(1).toInt() < beaconCount)
@@ -82,12 +82,28 @@ fun main() {
         paintFrame3("其他目标", listOf(beacons.takeLast(mobileCount * 2)))
         paintMap(init)
     }
-
-    recurrence(init to .0) { (p, _) -> f(p) }
-        .onEach { (p, _) -> remote.paintMap(p) }
-        .last()
-        .first
-        .also(::printError)
+    val error = errors.sum()
+    var pressed = false
+    val task = thread {
+        init.let {
+                val f = stochasticGD(errors) { e -> fastestBatchGD(e, space) }
+                recurrence(it to .0) { (p, _) -> f(p) }
+            }
+            .onEach { (p, _) -> remote.paintMap(p) }
+            .first { pressed }
+            .let {
+                val f = fastestBatchGD(error, space)
+                recurrence(it) { (p, _) -> f(p) }
+            }
+            .onEach { (p, _) ->
+                remote.paintMap(p)
+                println(error.substitute(p).toDouble())
+            }
+            .last()
+    }
+    readLine()
+    pressed = true
+    task.join()
 }
 
 private fun variable3D(i: Int) =
@@ -113,6 +129,3 @@ private fun RemoteHub.paintMap(field: ExpressionVector) {
     paintFrame3("连线", edges.map { list -> list.map { points[it] } })
     paintFrame3("其他", listOf(points.takeLast(mobileCount * 2)))
 }
-
-private fun printError(field: ExpressionVector) =
-    field.toPoints().forEachIndexed { i, v -> println("标签$i: ${v euclid beacons[i]}") }

@@ -3,11 +3,8 @@ package org.mechdancer.symbol.linear
 import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
-import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.core.Power
 import org.mechdancer.symbol.core.Variable
-import kotlin.streams.asSequence
 
 /** 表达式向量 */
 inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
@@ -22,10 +19,10 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
 
     operator fun plus(others: ExpressionVector) = zip(others, Expression::plus)
     operator fun minus(others: ExpressionVector) = zip(others, Expression::minus)
-    operator fun times(k: Double) = ExpressionVector(expressions.mapValues { (_, e) -> e * k })
-    operator fun div(k: Double) = ExpressionVector(expressions.mapValues { (_, e) -> e / k })
+    operator fun times(k: Double) = map { it * k }
+    operator fun div(k: Double) = map { it / k }
 
-    fun length() = expressions.entries.sumBy { (_, e) -> Power[e, Constant(2.0)] }.let(::sqrt)
+    fun length() = expressions.values.sumBy { it `^` 2 }.let(::sqrt)
 
     inline fun map(block: (Expression) -> Expression) =
         expressions.mapValues { (_, e) -> block(e) }.let(::ExpressionVector)
@@ -39,13 +36,7 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
         }.let(::ExpressionVector)
 
     fun toVector(values: ExpressionVector, order: VariableSpace): Vector {
-        val valueSave = values.expressions.entries
-            .fold(expressions) { r, (v, e) ->
-                r.entries.parallelStream()
-                    .map { (key, e0) -> key to e0.substitute(v, e) }
-                    .asSequence()
-                    .toMap()
-            }
-        return order.variables.toList().map { valueSave.getValue(it).toDouble() }.toListVector()
+        val valueSave = substitute(values)
+        return order.variables.map { valueSave[it]!!.toDouble() }.toListVector()
     }
 }
