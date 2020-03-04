@@ -10,14 +10,11 @@ import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
-import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.optimize.fastestBatchGD
 import org.mechdancer.symbol.optimize.recurrence
-import org.mechdancer.symbol.optimize.stochasticGD
-import kotlin.concurrent.thread
 import kotlin.math.sqrt
 
 // 地图
@@ -42,68 +39,45 @@ private val beacons =
         }
         val l = 2 * interval / (mobileCount + 1)
         for (i in 1..mobileCount) {
-            yield(vector3D(l * i, interval * .1, -2))
-            yield(vector3D(l * i, interval * .9, -2))
+            yield(vector3D(l * i, interval * .3, -2))
+            yield(vector3D(l * i, interval * .7, -2))
         }
     }.map(::deploy).toList()
 
 fun main() {
-    val measures = beacons.map { a -> beacons.map { b -> measure(a euclid b) } }
-    val space = beacons.mapIndexed { i, _ -> variables("x$i", "y$i", "z$i").variables }
-        .flatten()
+    val space = beacons
+        .indices
+        .flatMap { i -> variables("x$i", "y$i", "z$i").variables }
         .toSet()
         .let(::VariableSpace)
-    val errors = measures
-        .mapIndexed { i, distances ->
-            distances.mapIndexed { j, distance ->
-                if (distance < maxMeasure)
-                    (variable3D(i) - variable3D(j)).length() - distance
-                else
-                    Constant.`0`
-            }
+    val edges = sequence {
+        for (i in 0 until beaconCount) for (j in i + 1 until beacons.size) {
+            if (beacons[i] euclid beacons[j] < maxMeasure) yield(listOf(i, j))
         }
-        .flatten()
-        .filterIsInstance<FunctionExpression>()
-        .run { map { (it `^` 2) / (2 * size) } }
+    }.toList()
+    val errors =
+        edges.map { (i, j) ->
+            ((variable3D(i) - variable3D(j)).length() - measure(beacons[i] euclid beacons[j]) `^` 2) / (2 * edges.size)
+        }
 
     val init = space.ordinaryField.map {
         Constant(
             if ((it as Variable).name.drop(1).toInt() < beaconCount)
                 gaussian(maxMeasure)
             else
-                gaussian(maxMeasure) - 20 * maxMeasure)
+                gaussian(maxMeasure) - 10 * maxMeasure)
     }
 
     println(beacons.joinToString("\n", transform = Vector::rowView))
     val remote = remoteHub("定位优化").apply {
         openAllNetworks()
         println(networksInfo())
-        paintFrame3("目标", edges.map { list -> list.map { beacons[it] } })
-        paintFrame3("其他目标", listOf(beacons.takeLast(mobileCount * 2)))
-        paintMap(init)
+        paintMap(edges, init)
     }
-    val error = errors.sum()
-    var pressed = false
-    val task = thread {
-        init.let {
-                val f = stochasticGD(errors) { e -> fastestBatchGD(e, space) }
-                recurrence(it to .0) { (p, _) -> f(p) }
-            }
-            .onEach { (p, _) -> remote.paintMap(p) }
-            .first { pressed }
-            .let {
-                val f = fastestBatchGD(error, space)
-                recurrence(it) { (p, _) -> f(p) }
-            }
-            .onEach { (p, _) ->
-                remote.paintMap(p)
-                println(error.substitute(p).toDouble())
-            }
-            .last()
-    }
-    readLine()
-    pressed = true
-    task.join()
+    val f = fastestBatchGD(errors.sum(), space)
+    recurrence(init to .0) { (p, _) -> f(p) }
+        .onEach { (p, s) -> remote.paintMap(edges, p); println(s) }
+        .last()
 }
 
 private fun variable3D(i: Int) =
@@ -119,13 +93,10 @@ private fun ExpressionVector.toPoints() =
         vector3D(x, y, z)
     }
 
-private val edges = listOf(
-    listOf(0, 1),
-    listOf(0, 2, 3, 1),
-    listOf(2, 4, 5, 3))
-
-private fun RemoteHub.paintMap(field: ExpressionVector) {
+private fun RemoteHub.paintMap(
+    edges: List<List<Int>>,
+    field: ExpressionVector
+) {
     val points = field.toPoints()
     paintFrame3("连线", edges.map { list -> list.map { points[it] } })
-    paintFrame3("其他", listOf(points.takeLast(mobileCount * 2)))
 }

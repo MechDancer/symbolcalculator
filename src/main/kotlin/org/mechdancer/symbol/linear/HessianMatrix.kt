@@ -22,11 +22,11 @@ class HessianMatrix internal constructor(
 
     init {
         val d = toVariable.map(::Differential)
-        expressions = sequence {
-            for (r in toVariable.indices)
-                for (c in 0..r)
-                    yield(ddf / d[r] / d[c])
-        }.toList()
+        expressions = sequence { for (r in toVariable.indices) for (c in 0..r) yield(r to c) }
+            .toList()
+            .parallelStream()
+            .map { (r, c) -> ddf / d[r] / d[c] }
+            .toList()
     }
 
     operator fun get(rv: Variable, cv: Variable): Expression {

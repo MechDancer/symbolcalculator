@@ -16,13 +16,15 @@ fun newton(
     f: Expression,
     v: Variable
 ): OptimizeStep<Double> {
+    operator fun Expression.get(x: Double) =
+        substitute(v, Constant(x)).toDouble()
+
     val df = f.d() / v.d()
     val ddf = df.d() / v.d()
     return { p ->
-        val g = df.substitute(v, Constant(p)).toDouble()
-        val h = g / ddf.substitute(v, Constant(p)).toDouble()
-        val step = if (h.sign != g.sign) g else h
-        p - step to abs(step)
+        val g = df[p]
+        val l = abs(g / ddf[p])
+        p - g.sign * l to l
     }
 }
 

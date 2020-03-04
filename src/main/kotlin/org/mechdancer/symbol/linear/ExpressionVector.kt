@@ -5,6 +5,7 @@ import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
+import kotlin.streams.toList
 
 /** 表达式向量 */
 inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
@@ -31,9 +32,14 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
         map { it.substitute(from, to) }
 
     fun substitute(others: ExpressionVector) =
-        others.expressions.entries.fold(expressions) { r, (v, e) ->
-            r.mapValues { (_, e0) -> e0.substitute(v, e) }
-        }.let(::ExpressionVector)
+        if (dim >= 6)
+            others.expressions.entries.fold(expressions.values) { r, (v, e) ->
+                r.parallelStream().map { e0 -> e0.substitute(v, e) }.toList()
+            }.let { ExpressionVector(expressions.keys.zip(it).toMap()) }
+        else
+            others.expressions.entries.fold(expressions) { r, (v, e) ->
+                r.mapValues { (_, e0) -> e0.substitute(v, e) }
+            }.let(::ExpressionVector)
 
     fun toVector(values: ExpressionVector, order: VariableSpace): Vector {
         val valueSave = substitute(values)
