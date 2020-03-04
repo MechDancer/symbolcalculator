@@ -70,9 +70,10 @@ fun main() {
                     val measures = map.map { p -> measure(p euclid mobile).takeIf { it < maxMeasure } ?: -1.0 }
                     val result = locator(measures)!!
 
-                    remote.paintFrame3("目标", map.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(mobile, it) })
-                    remote
-                        .paintFrame3("定位", beacons.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(result, it) })
+                    with(remote) {
+                        paintFrame3("目标", map.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(mobile, it) })
+                        paintFrame3("定位", beacons.filterIndexed { i, _ -> measures[i] > 0 }.map { listOf(result, it) })
+                    }
 
                     result - mobile
                 }

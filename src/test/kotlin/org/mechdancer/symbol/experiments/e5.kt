@@ -14,14 +14,15 @@ import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
-import org.mechdancer.symbol.optimize.gradientDescent
+import org.mechdancer.symbol.optimize.fastestGD
+import org.mechdancer.symbol.optimize.recurrence
 import org.mechdancer.symbol.optimize.stochasticGD
 import kotlin.math.sqrt
 
 // 地图
 
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(4.0) * .9
+private val interval = maxMeasure / sqrt(2.0) * .9
 
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
@@ -30,7 +31,7 @@ private fun measure(d: Double) = d * multiplier + 5e-3 * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
 private const val beaconCount = 6
-private const val mobileCount = 0
+private const val mobileCount = 4
 
 private val beacons =
     sequence {
@@ -56,9 +57,7 @@ fun main() {
         .mapIndexed { i, distances ->
             distances.mapIndexed { j, distance ->
                 if (distance < maxMeasure)
-                    sqrt((Variable("x$i") - Variable("x$j") `^` 2) +
-                         (Variable("y$i") - Variable("y$j") `^` 2) +
-                         (Variable("z$i") - Variable("z$j") `^` 2)) - distance
+                    (variable3D(i) - variable3D(j)).length() - distance
                 else
                     Constant.`0`
             }
@@ -66,8 +65,14 @@ fun main() {
         .flatten()
         .filterIsInstance<FunctionExpression>()
 
-    val f = stochasticGD(samples) { gradientDescent(it, space) }
-    val init = space.ordinaryField.map { Constant(gaussian(maxMeasure)) }
+    val f = stochasticGD(samples) { fastestGD(it, space) }
+    val init = space.ordinaryField.map {
+        Constant(
+            if ((it as Variable).name.drop(1).toInt() < beaconCount)
+                gaussian(maxMeasure)
+            else
+                gaussian(maxMeasure) - 20 * maxMeasure)
+    }
 
     println(beacons.joinToString("\n", transform = Vector::rowView))
     val remote = remoteHub("定位优化").apply {
@@ -84,6 +89,11 @@ fun main() {
         .first
         .also(::printError)
 }
+
+private fun variable3D(i: Int) =
+    listOf("x", "y", "z")
+        .associate { Variable(it) to Variable("$it$i") }
+        .let(::ExpressionVector)
 
 private fun ExpressionVector.toPoints() =
     beacons.indices.map { i ->
