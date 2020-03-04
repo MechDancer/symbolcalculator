@@ -14,7 +14,7 @@ import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
-import org.mechdancer.symbol.optimize.fastestGD
+import org.mechdancer.symbol.optimize.fastestBatchGD
 import org.mechdancer.symbol.optimize.recurrence
 import org.mechdancer.symbol.optimize.stochasticGD
 import kotlin.math.sqrt
@@ -31,7 +31,7 @@ private fun measure(d: Double) = d * multiplier + 5e-3 * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
 private const val beaconCount = 6
-private const val mobileCount = 4
+private const val mobileCount = 3
 
 private val beacons =
     sequence {
@@ -65,7 +65,7 @@ fun main() {
         .flatten()
         .filterIsInstance<FunctionExpression>()
 
-    val f = stochasticGD(samples) { fastestGD(it, space) }
+    val f = stochasticGD(samples) { fastestBatchGD(it, space) }
     val init = space.ordinaryField.map {
         Constant(
             if ((it as Variable).name.drop(1).toInt() < beaconCount)

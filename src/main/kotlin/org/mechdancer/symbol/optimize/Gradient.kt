@@ -17,7 +17,7 @@ import java.util.*
  * @param alpha 学习率系数
  * @return 优化步骤函数
  */
-fun standardGD(
+fun batchGD(
     error: Expression,
     space: VariableSpace,
     alpha: (Double) -> Double
@@ -38,7 +38,7 @@ fun standardGD(
  * @param space 变量空间
  * @return 优化步骤函数
  */
-fun fastestGD(
+fun fastestBatchGD(
     error: Expression,
     space: VariableSpace
 ): OptimizeStep<ExpressionVector> {

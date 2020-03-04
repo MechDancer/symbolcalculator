@@ -84,6 +84,7 @@ fun main() {
             }
 }
 
+// 统计 -> 一范数，均值，标准差
 private fun Collection<Vector3D>.statistic(): Triple<Vector, Vector, Vector> {
     var abs = first().toList().map(::abs).toListVector()
     var expect = first()

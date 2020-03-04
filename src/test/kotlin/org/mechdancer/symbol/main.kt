@@ -10,9 +10,9 @@ fun main() {
         val dx = d(x)
         val dy = d(y)
 
-        println("∂2f / ∂x2  = ${ddf / (dx * dx)}")
-        println("∂2f / ∂x∂y = ${ddf / (dx * dy)}")
-        println("∂2f / ∂y2  = ${ddf / (dy * dy)}")
+        println("∂²f / ∂x²  = ${ddf / (dx * dx)}")
+        println("∂²f / ∂x∂y = ${ddf / (dx * dy)}")
+        println("∂²f / ∂y²  = ${ddf / (dy * dy)}")
     }
     println()
     run {
