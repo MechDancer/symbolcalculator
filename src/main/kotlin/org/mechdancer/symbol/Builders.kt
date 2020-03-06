@@ -10,14 +10,21 @@ import kotlin.reflect.KProperty
 
 // 定义变量
 
-class VariableProperty
+class VariableProperty(private val collector: MutableSet<Variable>? = null)
     : ReadOnlyProperty<Any?, Variable> {
+    private var memory: Variable? = null
     override fun getValue(thisRef: Any?, property: KProperty<*>) =
-        Variable(property.name)
+        memory ?: Variable(property.name).also {
+            memory = it
+            collector?.plusAssign(it)
+        }
 }
 
 val variable
     get() = VariableProperty()
+
+fun variable(collector: MutableSet<Variable>) =
+    VariableProperty(collector)
 
 // 定义变量空间
 
@@ -40,10 +47,14 @@ fun variableSpace(vararg names: String, indices: Iterable<Any> = emptyList()) =
 fun variables(vararg names: String) =
     VariableSpace(names.map(::Variable).toSet())
 
-fun point(vararg pairs: Pair<String, Number>) =
-    ExpressionVector(pairs.associate { (v, x) ->
-        Variable(v) to Constant(x.toDouble())
-    })
+fun point(vararg pairs: Pair<Variable, Number>) =
+    ExpressionVector(pairs.associate { (v, x) -> v to Constant(x.toDouble()) })
 
-fun field(vararg pairs: Pair<String, Expression>) =
-    ExpressionVector(pairs.associate { (v, e) -> Variable(v) to e })
+fun field(vararg pairs: Pair<Variable, Expression>) =
+    ExpressionVector(pairs.associate { (v, e) -> v to e })
+
+// 变量收集器
+
+fun collector() = mutableSetOf<Variable>()
+
+fun MutableSet<Variable>.toSpace() = VariableSpace(this)

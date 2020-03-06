@@ -80,6 +80,13 @@ fun <T> Sequence<T>.productBy(block: (T) -> Expression) = Product[map(block).toL
 fun <T> Iterable<T>.productBy(block: (T) -> Expression) = Product[map(block)]
 fun <T> Array<T>.productBy(block: (T) -> Expression) = Product[map(block)]
 
+// 均方
+
+fun Sequence<Expression>.meanSquare() = toList().meanSquare()
+fun Iterable<Expression>.meanSquare() = toList().meanSquare()
+fun Collection<Expression>.meanSquare() = run { sumBy { it `^` 2 } / (2 * size) }
+fun Array<Expression>.meanSquare() = run { sumBy { it `^` 2 } / (2 * size) }
+
 // 其他
 
 fun Expression.toDouble() = (this as Constant).value
