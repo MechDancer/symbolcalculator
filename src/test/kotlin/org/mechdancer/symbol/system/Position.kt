@@ -10,6 +10,8 @@ data class Position(
     val beacon: Beacon,
     val time: Long
 ) : Comparable<Position> {
+    fun isStatic() = time < 0
+
     fun toVector(): ExpressionVector {
         val postfix = if (time > 0) "${beacon.id}_$time" else beacon.id.toString()
         return ExpressionVector(mapOf(

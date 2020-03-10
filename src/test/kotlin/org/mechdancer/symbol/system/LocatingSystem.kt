@@ -2,6 +2,16 @@ package org.mechdancer.symbol.system
 
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
+import org.mechdancer.symbol.`^`
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Variable
+import org.mechdancer.symbol.div
+import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.minus
+import org.mechdancer.symbol.optimize.fastestBatchGD
+import org.mechdancer.symbol.optimize.recurrence
+import org.mechdancer.symbol.sum
 import java.util.*
 import kotlin.random.Random
 
@@ -63,8 +73,33 @@ class LocatingSystem {
     fun copy() = positions.mapValues { (_, map) -> map.toSortedMap() }
 
     /** 使用关心的部分关系更新坐标 */
-    private fun calculate(infomation: Map<Pair<Position, Position>, Double>)
-        : Map<Position, Vector3D> = TODO()
+    private fun calculate(information: Map<Pair<Position, Position>, Double>)
+        : Map<Position, Vector3D> {
+        // 构造变量空间和损失函数
+        val targets = sortedSetOf<Position>()
+        val error = information.map { (key, distance) ->
+            val (a, b) = key
+            targets += a
+            targets += b
+            ((a.toVector() - b.toVector()).length() - distance `^` 2) / (2 * information.size)
+        }
+        // 构造初始值
+        val init = targets.flatMap {
+            val (i, t) = it
+            it.toVector()
+                .expressions
+                .values
+                .filterIsInstance<Variable>()
+                .zip(positions[i]!![t]!!.toList().map(::Constant))
+        }.toMap().let(::ExpressionVector)
+        val space = VariableSpace(init.expressions.keys)
+        // 优化
+        val f = fastestBatchGD(error.sum(), space)
+        recurrence(init to .0) { (p, _) -> f(p) }
+            .onEach { (p, s) -> /*remote.paintMap(edges, p);*/ println(s) }
+            .last()
+        return emptyMap()
+    }
 
     private companion object {
         operator fun <T, U> SortedMap<T, U>.plusAssign(key: T) = set(key, get(lastKey()))
