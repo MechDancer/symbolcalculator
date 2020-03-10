@@ -2,17 +2,17 @@ package org.mechdancer.symbol.system
 
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
-import org.mechdancer.symbol.`^`
+import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.div
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
-import org.mechdancer.symbol.minus
 import org.mechdancer.symbol.optimize.fastestBatchGD
-import org.mechdancer.symbol.optimize.recurrence
-import org.mechdancer.symbol.sum
+import org.mechdancer.symbol.optimize.optimize
 import java.util.*
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.set
 import kotlin.random.Random
 
 class LocatingSystem {
@@ -72,6 +72,9 @@ class LocatingSystem {
     /** 获得一份深拷贝的坐标系 */
     fun copy() = positions.mapValues { (_, map) -> map.toSortedMap() }
 
+    /** 获得每个标签最新位置列表 */
+    fun newest() = positions.mapValues { (_, map) -> map[map.lastKey()]!! }
+
     /** 使用关心的部分关系更新坐标 */
     private fun calculate(information: Map<Pair<Position, Position>, Double>)
         : Map<Position, Vector3D> {
@@ -90,15 +93,19 @@ class LocatingSystem {
                 .expressions
                 .values
                 .filterIsInstance<Variable>()
-                .zip(positions[i]!![t]!!.toList().map(::Constant))
+                .zip(positions[i, t]!!.toList().map(::Constant))
         }.toMap().let(::ExpressionVector)
         val space = VariableSpace(init.expressions.keys)
         // 优化
         val f = fastestBatchGD(error.sum(), space)
-        recurrence(init to .0) { (p, _) -> f(p) }
-            .onEach { (p, s) -> /*remote.paintMap(edges, p);*/ println(s) }
-            .last()
-        return emptyMap()
+        val result = optimize(init, 100, .001, f)
+        return targets.associateWith { p ->
+            p.toVector().expressions.values
+                .toList()
+                .map { result[it as Variable]!!.toDouble() }
+                .to3D()
+                .also { positions[p.beacon, p.time] = it }
+        }
     }
 
     private companion object {
@@ -112,5 +119,9 @@ class LocatingSystem {
         ) = compute(key) { _, last ->
             last?.also(block) ?: default()
         }
+
+        operator fun <T, U, V> HashMap<T, SortedMap<U, V>>.get(t: T, u: U) = get(t)?.get(u)
+        operator fun <T, U, V> HashMap<T, SortedMap<U, V>>.set(t: T, u: U, v: V) = get(t)!!.set(u, v)
+        fun List<Double>.to3D() = Vector3D(get(0), get(1), get(2))
     }
 }
