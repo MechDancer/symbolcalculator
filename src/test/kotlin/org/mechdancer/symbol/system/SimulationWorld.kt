@@ -27,17 +27,10 @@ class SimulationWorld(
     private var edges =
         positions.buildEdges(actualTemperature, measureLimit)
 
-    fun preMeasures() =
-        sequence {
-            val c0 = soundVelocity(temperature)
-            val ca = soundVelocity(actualTemperature)
-            for (i in positions.indices) for (j in i + 1 until positions.size) {
-                val (a, pa) = positions[i]
-                val (b, pb) = positions[j]
-                val t = (pa euclid pb) / ca
-                if (t < measureLimit) yield(a to b to t * c0)
-            }
-        }.toMap()
+    fun preMeasures(): Map<Pair<Position, Position>, Double> {
+        val c0 = soundVelocity(temperature)
+        return edges.mapValues { (_, t) -> t * c0 }
+    }
 
     fun measure(mobile: Position, p: Vector3D) =
         sequence {
@@ -45,7 +38,7 @@ class SimulationWorld(
             val ca = soundVelocity(actualTemperature)
             for ((beacon, p0) in positions) {
                 val t = (p euclid p0) / ca
-                if (t < measureLimit) yield(beacon to mobile to t * c0)
+                if (t < measureLimit / 1000.0) yield(beacon to mobile to t * c0)
             }
         }
 
@@ -88,7 +81,7 @@ class SimulationWorld(
                     val (a, pa) = get(i)
                     val (b, pb) = get(j)
                     val time = (pa euclid pb) / ca
-                    if (time < maxTime) yield(a to b to time)
+                    if (time < maxTime / 1000.0) yield(a to b to time)
                 }
             }.toMap()
 

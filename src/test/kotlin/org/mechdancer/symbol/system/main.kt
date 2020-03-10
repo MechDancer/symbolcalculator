@@ -1,14 +1,18 @@
 package org.mechdancer.symbol.system
 
+import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.to3D
+import org.mechdancer.algebra.implement.vector.vector2D
 import org.mechdancer.algebra.implement.vector.vector3D
-import org.mechdancer.geometry.transformation.toTransformation
+import org.mechdancer.geometry.transformation.toTransformationWithSVD
 import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.networksInfo
+import org.mechdancer.symbol.paint
 import org.mechdancer.symbol.paintFrame3
 import kotlin.concurrent.thread
+import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
@@ -48,9 +52,9 @@ private val grid = sequence {
 fun main() {
     val world = SimulationWorld(
         beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap(),
-        30_000L / 330)
+        (maxMeasure * 1000).toLong() / 330)
     val system = LocatingSystem()
-    val remote = remoteHub("定位优化").apply {
+    val remote = remoteHub("sqrt(5)").apply {
         openAllNetworks()
         println(networksInfo())
     }
@@ -64,22 +68,36 @@ fun main() {
         val (a, b) = pair
         system[a, b, -1L] = l
     }
-    var points = system.toPoints()
-    remote.paintFrame3("优化", points)
-    readLine()
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
-    points = system.toPoints()
-    while (true) {
-        remote.paintFrame3("优化", points)
-        Thread.sleep(2000L)
+    remote.paintFrame3("初始化", system.newest().toPoints())
+
+    val mobile = Beacon(beaconCount)
+    val steps = 200
+    val dx = 2.0 * interval / steps
+    val dy = 1.0 * interval / steps
+    for (i in 0 until steps) {
+        val time = System.currentTimeMillis()
+        val position = mobile.move(time)
+        val m = vector3D(i * dx, i * dy, -1.5)
+        for ((pair, l) in world.measure(position, m)) {
+            val (a, b) = pair
+            system[a, b, time] = l
+        }
+        val part = system[mobile].toPoints()
+        val result = part.single().last().run { copy(z = -abs(z)) }
+        remote.paintFrame3("优化", part)
+        remote.paint("历史", result)
+        print("step $i: ")
+        print(m euclid result)
+        print("\t")
+        println(vector2D(m.x, m.y) euclid vector2D(result.x, result.y))
     }
 }
 
-fun LocatingSystem.toPoints(): List<List<Vector3D>> {
-    val result = newest()
-    val tf = result.entries.groupBy { (key, _) -> key.id in beacons.indices }
+fun Map<Beacon, Vector3D>.toPoints(): List<List<Vector3D>> {
+    val tf = entries.groupBy { (key, _) -> key.id in beacons.indices }
         .getValue(true)
         .map { (key, p) -> beacons[key.id] to p }
-        .toTransformation()!!
-    return listOf(result.map { (_, p) -> (tf * p).to3D() })
+        .toTransformationWithSVD(1e-8)
+    return listOf(map { (_, p) -> (tf * p).to3D() })
 }

@@ -87,6 +87,20 @@ fun RemoteHub.paint(
 /**
  * 画三维信号
  */
+fun RemoteHub.paint(
+    topic: String,
+    p: Vector3D
+) = paint(topic, 3) {
+    DataOutputStream(this).apply {
+        writeFloat(p.x.toFloat())
+        writeFloat(p.y.toFloat())
+        writeFloat(p.z.toFloat())
+    }
+}
+
+/**
+ * 画三维信号
+ */
 fun RemoteHub.paintFrame3(
     topic: String,
     list: Iterable<Iterable<Vector3D>>

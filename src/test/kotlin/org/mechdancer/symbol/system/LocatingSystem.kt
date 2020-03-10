@@ -4,6 +4,7 @@ import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
@@ -13,7 +14,7 @@ import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
-import kotlin.random.Random
+import kotlin.random.Random.Default.nextDouble
 
 class LocatingSystem {
     private val positions =
@@ -26,6 +27,7 @@ class LocatingSystem {
         hashMapOf<Pair<Position, Position>, SortedMap<Long, Double>>()
 
     operator fun set(a: Position, b: Position, t: Long, d: Double) {
+        fun random(time: Long) = Vector3D(nextDouble(), nextDouble(), nextDouble())
         require(a != b)
         val u: Position
         val v: Position
@@ -34,8 +36,8 @@ class LocatingSystem {
         } else {
             u = b; v = a
         }
-        positions.update(a.beacon, { it += a.time }, { sortedMapOf(a.time to random3D) })
-        positions.update(b.beacon, { it += b.time }, { sortedMapOf(b.time to random3D) })
+        positions.update(a.beacon, { it += a.time }, { sortedMapOf(a.time to random(a.time)) })
+        positions.update(b.beacon, { it += b.time }, { sortedMapOf(b.time to random(b.time)) })
         relations.update(u, { it += v }, { sortedSetOf(v) })
         relations.update(v, { it += u }, { sortedSetOf(u) })
         measures.update(u to v, { it[t] = d }, { sortedMapOf(t to d) })
@@ -52,9 +54,9 @@ class LocatingSystem {
         val position = beacon.move(lastTime)
         val candidates = relations[position]!!
         return candidates
-            .filterIndexed { i, p ->
-                relations[p]!!.containsAll(candidates.drop(i + 1))
-            }
+//            .filterIndexed { i, p ->
+//                relations[p]!!.containsAll(candidates.drop(i + 1))
+//            }
             .toSortedSet()
             .apply { add(position) }
             .toList()
@@ -64,7 +66,8 @@ class LocatingSystem {
                         yield(get(i) to get(j))
                 }
             }
-            .associateWith { measures[it]!!.average() }
+            .mapNotNull { pair -> measures[pair]?.average()?.let { pair to it } }
+            .toMap()
             .let(::calculate)
             .mapKeys { (key, _) -> key.beacon }
     }
@@ -75,6 +78,9 @@ class LocatingSystem {
     /** 获得每个标签最新位置列表 */
     fun newest() = positions.mapValues { (_, map) -> map[map.lastKey()]!! }
 
+    private val lengthMemory =
+        hashMapOf<Pair<Position, Position>, Expression>()
+
     /** 使用关心的部分关系更新坐标 */
     private fun calculate(information: Map<Pair<Position, Position>, Double>)
         : Map<Position, Vector3D> {
@@ -84,7 +90,10 @@ class LocatingSystem {
             val (a, b) = key
             targets += a
             targets += b
-            ((a.toVector() - b.toVector()).length() - distance `^` 2) / (2 * information.size)
+            val expression = lengthMemory.compute(key) { _, last ->
+                last ?: (a.toVector() - b.toVector()).length()
+            }!!
+            (expression - distance `^` 2) / (2 * information.size)
         }
         // 构造初始值
         val init = targets.flatMap {
@@ -98,7 +107,7 @@ class LocatingSystem {
         val space = VariableSpace(init.expressions.keys)
         // 优化
         val f = fastestBatchGD(error.sum(), space)
-        val result = optimize(init, 100, .001, f)
+        val result = optimize(init, 1000, 1e-3, f)
         return targets.associateWith { p ->
             p.toVector().expressions.values
                 .toList()
@@ -110,7 +119,6 @@ class LocatingSystem {
 
     private companion object {
         operator fun <T, U> SortedMap<T, U>.plusAssign(key: T) = set(key, get(lastKey()))
-        val random3D get() = Vector3D(Random.nextDouble(), Random.nextDouble(), Random.nextDouble())
         fun SortedMap<Long, Double>.average() = values.sum() / size
         fun <TK, TV> HashMap<TK, TV>.update(
             key: TK,
