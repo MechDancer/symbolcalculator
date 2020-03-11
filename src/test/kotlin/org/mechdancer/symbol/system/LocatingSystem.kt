@@ -11,6 +11,7 @@ import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.minus
 import org.mechdancer.symbol.optimize.ConditionCollector
 import org.mechdancer.symbol.optimize.fastestBatchGD
+import org.mechdancer.symbol.optimize.firstOrLast
 import org.mechdancer.symbol.optimize.recurrence
 import org.mechdancer.symbol.sum
 import org.mechdancer.symbol.toDouble
@@ -51,7 +52,7 @@ class LocatingSystem(val maxMeasure: Double) {
 
     /** 使用所有已知的测量数据，优化所有坐标 */
     fun optimize() {
-        calculate(measures.mapValues { (_, list) -> list.average() })
+        calculate(positions.flatMap { (beacon, set) -> set.keys.map(beacon::move) }.toSortedSet())
     }
 
     /** 获得一个全联通子图的全部定位 */
@@ -60,21 +61,8 @@ class LocatingSystem(val maxMeasure: Double) {
         val position = beacon.move(lastTime)
         val candidates = relations[position]!!
         return candidates
-            // 最小全联通域
-            // .filterIndexed { i, p ->
-            //     relations[p]!!.containsAll(candidates.drop(i + 1))
-            // }
             .toSortedSet()
             .apply { add(position) }
-            .toList()
-            .run {
-                sequence {
-                    for (i in indices) for (j in i + 1 until size)
-                        yield(get(i) to get(j))
-                }
-            }
-            .mapNotNull { pair -> measures[pair]?.average()?.let { pair to it } }
-            .toMap()
             .let(::calculate)
             .mapKeys { (key, _) -> key.beacon }
     }
@@ -89,15 +77,9 @@ class LocatingSystem(val maxMeasure: Double) {
         hashMapOf<Pair<Position, Position>, Expression>()
 
     /** 使用关心的部分关系更新坐标 */
-    private fun calculate(information: Map<Pair<Position, Position>, Double>)
+    private fun calculate(targets: SortedSet<Position>)
         : Map<Position, Vector3D> {
         // 构造变量空间和损失函数
-        val targets = sortedSetOf<Position>()
-        for ((key, _) in information) {
-            val (a, b) = key
-            targets += a
-            targets += b
-        }
         val collector = ConditionCollector()
         val list = targets.toList()
         for (i in list.indices) for (j in i + 1 until list.size) {
@@ -107,12 +89,11 @@ class LocatingSystem(val maxMeasure: Double) {
             val e = lengthMemory.compute(pair) { _, last ->
                 last ?: (a.toVector() - b.toVector()).length()
             }!!
-            information[pair]?.let { d -> collector += e - d }
+            measures[pair]?.run { collector += e - this[lastKey()]!! }
             ?: collector.domain(maxMeasure - e,
                                 maxMeasure - (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!))
         }
         val (error, domain, lambda) = collector.build()
-        println("points: ${targets.size}")
         // 构造初始值
         val init = targets.flatMap {
                 val (i, t) = it
@@ -127,9 +108,9 @@ class LocatingSystem(val maxMeasure: Double) {
         val space = VariableSpace(init.expressions.keys + lambda.keys)
         // 优化
         val f = fastestBatchGD(error.sum(), space, *domain)
-//        val result = optimize(init, 500, 1e-4, f)
+        // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
-            .onEach { (p, s) ->
+            .onEach { (p, _) ->
                 targets.map { b ->
                     b.beacon to b.toVector().expressions.values
                         .toList()
@@ -137,9 +118,8 @@ class LocatingSystem(val maxMeasure: Double) {
                         .to3D()
                 }.toMap().let(painter)
             }
-            .take(500)
-//            .firstOrLast { (_, step) -> step < 1e-3 }
-            .last()
+            .take(1000)
+            .firstOrLast { (_, step) -> step < 5e-3 }
             .first
         return targets.associateWith { p ->
             p.toVector().expressions.values

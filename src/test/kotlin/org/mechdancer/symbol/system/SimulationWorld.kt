@@ -27,6 +27,8 @@ class SimulationWorld(
     private var edges =
         positions.buildEdges(actualTemperature, measureLimit)
 
+    fun edges() = edges.keys
+
     fun preMeasures(): Map<Pair<Position, Position>, Double> {
         val c0 = soundVelocity(temperature)
         return edges.mapValues { (_, t) -> t * c0 }

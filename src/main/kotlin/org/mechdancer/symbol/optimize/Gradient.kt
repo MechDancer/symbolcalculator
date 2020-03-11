@@ -48,7 +48,7 @@ fun fastestBatchGD(
     return { p ->
         val limit = conditions.mapNotNull { it.check(p) }
         if (limit.isNotEmpty()) {
-            val k = Constant(abs(error.substitute(p).toDouble()))
+            val k = Constant(abs(error.substitute(p).toDouble()) / limit.size)
             fastestWithNewton(Sum[limit.map { it * k } + error], p, gradient.substitute(p))
         } else
             fastestWithNewton(error, p, gradient.substitute(p))

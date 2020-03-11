@@ -24,29 +24,17 @@ private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
-private const val beaconCount = 6
-
 private val beacons =
     sequence {
-        for (i in 0 until beaconCount)
-            yield(vector3D(i / 2, i % 2, 0) * interval)
+        for (i in 0 until 6)
+            if (i % 3 == 2) {
+                yield(vector3D(i / 2, i % 2, +1.0 / interval) * interval)
+                yield(vector3D(i / 2, i % 2, -1.0 / interval) * interval)
+            } else
+                yield(vector3D(i / 2, i % 2, 0) * interval)
     }.map(::deploy).toList()
 
-private val grid = sequence {
-    (0 until beaconCount / 2)
-        .flatMap {
-            if (it % 2 == 0)
-                listOf(it * 2, it * 2 + 1)
-            else
-                listOf(it * 2 + 1, it * 2)
-        }
-        .also { yield(it) }
-    for (i in 0 until beaconCount / 2 - 1)
-        yield(if (i % 2 == 0)
-                  listOf(i * 2, i * 2 + 2)
-              else
-                  listOf(i * 2 + 1, i * 2 + 3))
-}.toList()
+private val beaconCount = beacons.size
 
 fun main() {
     val world = SimulationWorld(
@@ -57,12 +45,7 @@ fun main() {
         openAllNetworks()
         println(networksInfo())
     }
-    thread(isDaemon = true) {
-        while (true) {
-            remote.paintFrame3("实际地图", grid.map { it.map(beacons::get) })
-            Thread.sleep(2000L)
-        }
-    }
+
     for ((pair, l) in world.preMeasures()) {
         val (a, b) = pair
         system[a, b, -1L] = l
@@ -72,6 +55,13 @@ fun main() {
         remote.paintFrame3("步骤", it.toPoints())
     }
 
+    val grid = world.edges().map { it.toList().map { it.beacon.id } }
+    thread(isDaemon = true) {
+        while (true) {
+            remote.paintFrame3("实际地图", grid.map { it.map(beacons::get) })
+            Thread.sleep(2000L)
+        }
+    }
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
 
     val mobile = Beacon(beaconCount)
