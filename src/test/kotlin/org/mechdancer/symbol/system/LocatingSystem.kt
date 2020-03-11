@@ -1,6 +1,5 @@
 package org.mechdancer.symbol.system
 
-import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.core.Constant
@@ -90,8 +89,8 @@ class LocatingSystem(val maxMeasure: Double) {
                 last ?: (a.toVector() - b.toVector()).length()
             }!!
             measures[pair]?.run { collector += e - this[lastKey()]!! }
-            ?: collector.domain(maxMeasure - e,
-                                maxMeasure - (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!))
+//            ?: collector.domain(maxMeasure - e,
+//                                maxMeasure - (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!))
         }
         val (error, domain, lambda) = collector.build()
         // 构造初始值
@@ -119,7 +118,9 @@ class LocatingSystem(val maxMeasure: Double) {
                 }.toMap().let(painter)
             }
             .take(1000)
-            .firstOrLast { (_, step) -> step < 5e-3 }
+            .firstOrLast { (_, step) ->
+                step < 1e-3
+            }
             .first
         return targets.associateWith { p ->
             p.toVector().expressions.values

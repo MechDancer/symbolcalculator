@@ -18,20 +18,17 @@ import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(2.0) * .9
+private const val interval = maxMeasure * .9
 
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
+val shape = vector3D(.5, sqrt(3.0) / 2, 0) * interval
 private val beacons =
     sequence {
         for (i in 0 until 6)
-            if (i % 3 == 2) {
-                yield(vector3D(i / 2, i % 2, +1.0 / interval) * interval)
-                yield(vector3D(i / 2, i % 2, -1.0 / interval) * interval)
-            } else
-                yield(vector3D(i / 2, i % 2, 0) * interval)
+            yield(vector3D(i / 2, i % 2, 0) * shape)
     }.map(::deploy).toList()
 
 private val beaconCount = beacons.size
@@ -66,8 +63,8 @@ fun main() {
 
     val mobile = Beacon(beaconCount)
     val steps = 200
-    val dx = 2.0 * interval / steps
-    val dy = 1.0 * interval / steps
+    val dx = shape.x * 2 / steps
+    val dy = shape.y / steps
     for (i in 0 until steps) {
         val time = System.currentTimeMillis()
         val position = mobile.move(time)

@@ -41,7 +41,7 @@ internal fun fastestWithNewton(
     val l by variable
     val next = p - dp.map { it * l }
     val a = optimize(1.0, 20, 1e-9, newton(error.substitute(next), l))
-    return next.substitute(l, Constant(a)) to dp.length().toDouble() * a
+    return next.substitute(l, Constant(a)) to dp.length().toDouble() * abs(a)
 }
 
 /** 优化计算 */
