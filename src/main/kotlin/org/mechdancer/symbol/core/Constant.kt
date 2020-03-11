@@ -1,6 +1,8 @@
 package org.mechdancer.symbol.core
 
 import java.text.DecimalFormat
+import kotlin.math.E
+import kotlin.math.PI
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -26,8 +28,15 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
         val NaN = Constant(Double.NaN)
 
-        val `0` = Constant(.0)
-        val `1` = Constant(1.0)
+        val e = Constant(E)
+        val pi = Constant(PI)
+        val `+∞` = Constant(Double.POSITIVE_INFINITY)
+        val `-∞` = Constant(Double.NEGATIVE_INFINITY)
+
+        val zero = Constant(.0)
+        val one = Constant(1.0)
+        val `0` get() = zero
+        val `1` get() = one
         val `-1` = Constant(-1.0)
 
         fun ln(x: Constant) =

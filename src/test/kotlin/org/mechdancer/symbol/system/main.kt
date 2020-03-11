@@ -2,6 +2,7 @@ package org.mechdancer.symbol.system
 
 import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.function.vector.plus
+import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.vector2D
@@ -17,7 +18,7 @@ import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(2.0) * .9
+private val interval = maxMeasure / sqrt(4.0) * .9
 
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
@@ -27,10 +28,8 @@ private const val beaconCount = 6
 
 private val beacons =
     sequence {
-        for (i in 0 until beaconCount / 2) {
-            yield(vector3D(i * interval, 0, 0))
-            yield(vector3D(i * interval, interval, 0))
-        }
+        for (i in 0 until beaconCount)
+            yield(vector3D(i / 2, i % 2, 0) * interval)
     }.map(::deploy).toList()
 
 private val grid = sequence {
@@ -54,7 +53,7 @@ fun main() {
         beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap(),
         (maxMeasure * 1000).toLong() / 330)
     val system = LocatingSystem()
-    val remote = remoteHub("sqrt(5)").apply {
+    val remote = remoteHub("sqrt(4)").apply {
         openAllNetworks()
         println(networksInfo())
     }
@@ -68,8 +67,12 @@ fun main() {
         val (a, b) = pair
         system[a, b, -1L] = l
     }
+
+    system.painter = {
+        remote.paintFrame3("步骤", it.toPoints())
+    }
+
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
-    remote.paintFrame3("初始化", system.newest().toPoints())
 
     val mobile = Beacon(beaconCount)
     val steps = 200
@@ -85,7 +88,6 @@ fun main() {
         }
         val part = system[mobile].toPoints()
         val result = part.single().last().run { copy(z = -abs(z)) }
-        remote.paintFrame3("优化", part)
         remote.paint("历史", result)
         print("step $i: ")
         print(m euclid result)
@@ -94,7 +96,7 @@ fun main() {
     }
 }
 
-fun Map<Beacon, Vector3D>.toPoints(): List<List<Vector3D>> {
+private fun Map<Beacon, Vector3D>.toPoints(): List<List<Vector3D>> {
     val tf = entries.groupBy { (key, _) -> key.id in beacons.indices }
         .getValue(true)
         .map { (key, p) -> beacons[key.id] to p }

@@ -8,6 +8,10 @@ import org.mechdancer.symbol.linear.ExpressionVector
 import kotlin.math.abs
 import kotlin.math.sign
 
+/** 构造取值范围结构 */
+operator fun Variable.get(min: Constant, max: Constant) =
+    Domain(this, min, max)
+
 /** 优化步骤函数 := 当前位置 -> (新位置, 实际步长) */
 typealias OptimizeStep<T> = (T) -> Pair<T, Double>
 

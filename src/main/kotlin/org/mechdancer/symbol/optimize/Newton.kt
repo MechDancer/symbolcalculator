@@ -8,6 +8,7 @@ import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.listVectorOfZero
 import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Sum
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian
 import org.mechdancer.symbol.linear.HessianMatrix
@@ -49,7 +50,8 @@ fun newton(
 fun dampingNewton(
     error: Expression,
     space: VariableSpace,
-    kM: Double = .5
+    kM: Double = .5,
+    vararg conditions: Domain
 ): OptimizeStep<ExpressionVector> {
     // 微分
     val df = error.d()
@@ -69,6 +71,6 @@ fun dampingNewton(
             m = zero
             h
         }
-        fastestWithNewton(error, p, space.order(dp))
+        fastestWithNewton(Sum[conditions.mapNotNull { it.check(p) } + error], p, space.order(dp))
     }
 }

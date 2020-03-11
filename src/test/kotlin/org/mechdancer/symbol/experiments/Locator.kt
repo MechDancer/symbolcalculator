@@ -7,6 +7,8 @@ import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
+import org.mechdancer.symbol.core.Constant.Companion.`-∞`
+import org.mechdancer.symbol.core.Constant.Companion.zero
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
@@ -14,6 +16,7 @@ import org.mechdancer.symbol.experiments.Locator.State.Preparing
 import org.mechdancer.symbol.experiments.Locator.State.Working
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.optimize.dampingNewton
+import org.mechdancer.symbol.optimize.get
 import org.mechdancer.symbol.optimize.optimize
 import kotlin.math.ln
 
@@ -34,10 +37,10 @@ class Locator(beacons: List<Vector3D>) {
                         ?.let { it.sum() / (2 * it.size) }
                     ?: return run { state = Preparing; null }
         val init = last.toPoint()
-        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, space))
+        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, space, .5, Z[`-∞`, zero]))
         val new = 3 - ln(error[result])
         val old = 3 - ln(error[init])
-        val p = result.toVector().run { if (z > 0) copy(z = -this.z) else this }
+        val p = result.toVector()
         when (state) {
             Preparing -> {
                 last = when {
@@ -56,20 +59,20 @@ class Locator(beacons: List<Vector3D>) {
     }
 
     private companion object {
-        private val vx = Variable("x")
-        private val vy = Variable("y")
-        private val vz = Variable("z")
+        private val X = Variable("x")
+        private val Y = Variable("y")
+        private val Z = Variable("z")
         private val space = variables("x", "y", "z")
 
         private fun Vector3D.toPoint() =
-            ExpressionVector(mapOf(vx to Constant(x),
-                                   vy to Constant(y),
-                                   vz to Constant(z)))
+            ExpressionVector(mapOf(X to Constant(x),
+                                   Y to Constant(y),
+                                   Z to Constant(z)))
 
         private fun ExpressionVector.toVector() =
-            vector3D(this[vx]!!.toDouble(),
-                     this[vy]!!.toDouble(),
-                     this[vz]!!.toDouble())
+            vector3D(this[X]!!.toDouble(),
+                     this[Y]!!.toDouble(),
+                     this[Z]!!.toDouble())
 
         private operator fun Expression.get(values: ExpressionVector) =
             substitute(values).toDouble()

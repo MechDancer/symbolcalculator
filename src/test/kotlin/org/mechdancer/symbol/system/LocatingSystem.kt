@@ -9,7 +9,8 @@ import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.optimize.fastestBatchGD
-import org.mechdancer.symbol.optimize.optimize
+import org.mechdancer.symbol.optimize.firstOrLast
+import org.mechdancer.symbol.optimize.recurrence
 import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -17,6 +18,8 @@ import kotlin.collections.set
 import kotlin.random.Random.Default.nextDouble
 
 class LocatingSystem {
+    var painter: (Map<Beacon, Vector3D>) -> Unit = {}
+
     private val positions =
         hashMapOf<Beacon, SortedMap<Long, Vector3D>>()
 
@@ -54,9 +57,10 @@ class LocatingSystem {
         val position = beacon.move(lastTime)
         val candidates = relations[position]!!
         return candidates
-//            .filterIndexed { i, p ->
-//                relations[p]!!.containsAll(candidates.drop(i + 1))
-//            }
+            // 最小全联通域
+            // .filterIndexed { i, p ->
+            //     relations[p]!!.containsAll(candidates.drop(i + 1))
+            // }
             .toSortedSet()
             .apply { add(position) }
             .toList()
@@ -95,6 +99,7 @@ class LocatingSystem {
             }!!
             (expression - distance `^` 2) / (2 * information.size)
         }
+        println("points: ${targets.size}")
         // 构造初始值
         val init = targets.flatMap {
             val (i, t) = it
@@ -107,7 +112,19 @@ class LocatingSystem {
         val space = VariableSpace(init.expressions.keys)
         // 优化
         val f = fastestBatchGD(error.sum(), space)
-        val result = optimize(init, 1000, 1e-3, f)
+//        val result = optimize(init, 500, 1e-4, f)
+        val result = recurrence(init to .0) { (p, _) -> f(p) }
+            .onEach { (p, _) ->
+                targets.map { b ->
+                    b.beacon to b.toVector().expressions.values
+                        .toList()
+                        .map { p[it as Variable]!!.toDouble() }
+                        .to3D()
+                }.toMap().let(painter)
+            }
+            .take(500)
+            .firstOrLast { (_, step) -> step < 1e-3 }
+            .first
         return targets.associateWith { p ->
             p.toVector().expressions.values
                 .toList()

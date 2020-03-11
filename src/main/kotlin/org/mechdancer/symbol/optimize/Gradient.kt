@@ -1,6 +1,7 @@
 package org.mechdancer.symbol.optimize
 
 import org.mechdancer.symbol.core.Expression
+import org.mechdancer.symbol.core.Sum
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian
 import org.mechdancer.symbol.linear.VariableSpace
@@ -37,10 +38,13 @@ fun batchGD(
  */
 fun fastestBatchGD(
     error: Expression,
-    space: VariableSpace
+    space: VariableSpace,
+    vararg conditions: Domain
 ): OptimizeStep<ExpressionVector> {
     val gradient = Hamiltonian.dfToGrad(error.d(), space)
-    return { p -> fastestWithNewton(error, p, gradient.substitute(p)) }
+    return { p ->
+        fastestWithNewton(Sum[conditions.mapNotNull { it.check(p) } + error], p, gradient.substitute(p))
+    }
 }
 
 /**
