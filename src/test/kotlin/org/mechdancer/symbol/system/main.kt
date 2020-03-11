@@ -18,7 +18,7 @@ import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 private const val maxMeasure = 30.0
-private val interval = maxMeasure / sqrt(4.0) * .9
+private val interval = maxMeasure / sqrt(2.0) * .9
 
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
@@ -52,7 +52,7 @@ fun main() {
     val world = SimulationWorld(
         beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap(),
         (maxMeasure * 1000).toLong() / 330)
-    val system = LocatingSystem()
+    val system = LocatingSystem(maxMeasure)
     val remote = remoteHub("sqrt(4)").apply {
         openAllNetworks()
         println(networksInfo())

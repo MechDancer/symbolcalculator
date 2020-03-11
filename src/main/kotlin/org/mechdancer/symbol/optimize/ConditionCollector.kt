@@ -8,11 +8,11 @@ import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.div
-import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.minus
 
 class ConditionCollector {
-    private var i = 0
+    private val values =
+        mutableListOf<Double?>()
 
     private val equations =
         mutableListOf<FunctionExpression>()
@@ -24,12 +24,13 @@ class ConditionCollector {
         if (e is FunctionExpression) equations += e
     }
 
-    fun domain(e: Expression) {
+    fun domain(e: Expression, init: Double?) {
         when (e) {
             is Constant -> Unit
             is Variable -> domains += e[`-∞`, zero]
             else        -> {
-                val lambda = Variable("λ${i++}")
+                values += init
+                val lambda = Variable("λ${values.lastIndex}")
                 equations += (e - lambda) as FunctionExpression
                 domains += lambda[`-∞`, zero]
             }
@@ -38,6 +39,8 @@ class ConditionCollector {
 
     fun build() =
         Triple(equations.run { map { (it `^` 2) / (2 * size) } },
-               domains.toList(),
-               (0 until i).map { Variable("λ$it") }.toSet().let(::VariableSpace))
+               domains.toTypedArray(),
+               values.withIndex().associate { (i, value) ->
+                   Variable("λ$i") to value
+               })
 }

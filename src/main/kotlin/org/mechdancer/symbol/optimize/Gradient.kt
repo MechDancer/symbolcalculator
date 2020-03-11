@@ -1,11 +1,14 @@
 package org.mechdancer.symbol.optimize
 
+import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Sum
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian
 import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.substitute
 import org.mechdancer.symbol.toDouble
+import kotlin.math.abs
 
 /**
  * 标准的完全梯度下降优化
@@ -43,7 +46,12 @@ fun fastestBatchGD(
 ): OptimizeStep<ExpressionVector> {
     val gradient = Hamiltonian.dfToGrad(error.d(), space)
     return { p ->
-        fastestWithNewton(Sum[conditions.mapNotNull { it.check(p) } + error], p, gradient.substitute(p))
+        val limit = conditions.mapNotNull { it.check(p) }
+        if (limit.isNotEmpty()) {
+            val k = Constant(abs(error.substitute(p).toDouble()))
+            fastestWithNewton(Sum[limit.map { it * k } + error], p, gradient.substitute(p))
+        } else
+            fastestWithNewton(error, p, gradient.substitute(p))
     }
 }
 
