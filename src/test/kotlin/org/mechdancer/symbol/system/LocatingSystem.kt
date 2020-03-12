@@ -31,23 +31,15 @@ class LocatingSystem(val maxMeasure: Double) {
         hashMapOf<Position, SortedSet<Position>>()
 
     private val measures =
-        hashMapOf<Pair<Position, Position>, SortedMap<Long, Double>>()
+        hashMapOf<Pair<Position, Position>, MutableList<Double>>()
 
     operator fun set(a: Position, b: Position, t: Long, d: Double) {
-        fun random() = Vector3D(nextDouble(), nextDouble(), nextDouble())
         require(a != b)
-        val u: Position
-        val v: Position
-        if (a < b) {
-            u = a; v = b
-        } else {
-            u = b; v = a
-        }
-        positions.update(a.beacon, { it += a.time }, { sortedMapOf(a.time to random()) })
-        positions.update(b.beacon, { it += b.time }, { sortedMapOf(b.time to random()) })
-        relations.update(u, { it += v }, { sortedSetOf(v) })
-        relations.update(v, { it += u }, { sortedSetOf(u) })
-        measures.update(u to v, { it[t] = d }, { sortedMapOf(t to d) })
+        positions.update(a) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
+        positions.update(b) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
+        relations.update(a, { it += b }, { sortedSetOf(b) })
+        relations.update(b, { it += a }, { sortedSetOf(a) })
+        measures.update(if (a < b) a to b else b to a, { it += d }, { mutableListOf(d) })
     }
 
     /** 使用所有已知的测量数据，优化所有坐标 */
@@ -85,26 +77,23 @@ class LocatingSystem(val maxMeasure: Double) {
             val a = list[i]
             val b = list[j]
             val pair = a to b
-            val e = lengthMemory.compute(pair) { _, last ->
-                last ?: (a.toVector() - b.toVector()).length()
-            }!!
+            val e = lengthMemory.computeIfAbsent(pair) { (a.toVector() - b.toVector()).length() }
             measures[pair]?.run {
                 val l = average()
                 collector += e - l
             } ?: run {
-                val l = (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!)
+                val l = (positions[a]!! euclid positions[b]!!)
                 collector[maxMeasure - e] = maxMeasure - l
             }
         }
         val (error, domain, lambda) = collector.build()
         // 构造初始值
         val init = targets.flatMap {
-                val (i, t) = it
                 it.toVector()
                     .expressions
                     .values
                     .filterIsInstance<Variable>()
-                    .zip(positions[i, t]!!.toList().map(::Constant))
+                    .zip(positions[it]!!.toList().map(::Constant))
             }.toMap().toMutableMap()
             .also { for ((v, value) in lambda) it[v] = Constant(value!!) }
             .let(::ExpressionVector)
@@ -129,23 +118,23 @@ class LocatingSystem(val maxMeasure: Double) {
                 .toList()
                 .map { result[it as Variable]!!.toDouble() }
                 .to3D()
-                .also { positions[p.beacon, p.time] = it }
+                .also { positions[p] = it }
         }
     }
 
     private companion object {
-        operator fun <T, U> SortedMap<T, U>.plusAssign(key: T) = set(key, get(lastKey()))
-        fun SortedMap<Long, Double>.average() = values.sum() / size
-        fun <TK, TV> HashMap<TK, TV>.update(
-            key: TK,
-            block: (TV) -> Unit,
-            default: () -> TV
-        ) = compute(key) { _, last ->
-            last?.also(block) ?: default()
-        }
+        fun <TK, TV> HashMap<TK, TV>.update(key: TK, block: (TV) -> Unit, default: () -> TV) =
+            compute(key) { _, last -> last?.also(block) ?: default() }
 
-        operator fun <T, U, V> HashMap<T, SortedMap<U, V>>.get(t: T, u: U) = get(t)?.get(u)
-        operator fun <T, U, V> HashMap<T, SortedMap<U, V>>.set(t: T, u: U, v: V) = get(t)!!.set(u, v)
+        operator fun <T> HashMap<Beacon, SortedMap<Long, T>>.get(p: Position) =
+            get(p.beacon)?.get(p.time)
+
+        operator fun <T> HashMap<Beacon, SortedMap<Long, T>>.set(p: Position, t: T) =
+            update(p.beacon, { it[p.time] = t }, { sortedMapOf(p.time to t) })
+
+        fun <T> HashMap<Beacon, SortedMap<Long, T>>.update(p: Position, block: () -> T) =
+            update(p.beacon, { it[p.time] = it[it.lastKey()] }, { sortedMapOf(p.time to block()) })
+
         fun List<Double>.to3D() = Vector3D(get(0), get(1), get(2))
     }
 }

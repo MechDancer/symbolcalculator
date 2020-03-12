@@ -24,7 +24,10 @@ private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
-val shape = vector3D(.5, sqrt(3.0) / 2, 0) * interval
+private val lx = 1 / sqrt(2.0)
+private val ly = sqrt(1 - lx * lx)
+
+val shape = vector3D(lx, ly, 0) * interval
 private val beacons =
     sequence {
         for (i in 0 until 6)
