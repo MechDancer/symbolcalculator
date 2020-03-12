@@ -65,7 +65,7 @@ fun main() {
             if ((it as Variable).name.drop(1).toInt() < beaconCount)
                 gaussian(maxMeasure)
             else
-                gaussian(maxMeasure) - 10 * maxMeasure)
+                gaussian(maxMeasure) - 5 * maxMeasure)
     }
 
     println(beacons.joinToString("\n", transform = Vector::rowView))

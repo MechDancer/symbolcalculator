@@ -81,7 +81,7 @@ class LocatingSystem(val maxMeasure: Double) {
             measures[pair]?.run {
                 val l = average()
                 collector += e - l
-            } ?: run {
+            } ?: if (a.isStatic() || b.isStatic()) {
                 val l = (positions[a]!! euclid positions[b]!!)
                 collector[maxMeasure - e] = maxMeasure - l
             }

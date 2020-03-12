@@ -24,17 +24,11 @@ private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gaussian(.1))
 
-private val lx = 1 / sqrt(2.0)
+private val lx = .5
 private val ly = sqrt(1 - lx * lx)
 
 val shape = vector3D(lx, ly, 0) * interval
-private val beacons =
-    sequence {
-        for (i in 0 until 6)
-            yield(vector3D(i / 2, i % 2, 0) * shape)
-    }.map(::deploy).toList()
-
-private val beaconCount = beacons.size
+private val beacons = (0 until 6).map { deploy(vector3D(it / 2, it % 2, 0) * shape) }
 
 fun main() {
     val world = SimulationWorld(
@@ -64,7 +58,7 @@ fun main() {
     }
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
 
-    val mobile = Beacon(beaconCount)
+    val mobile = Beacon(beacons.size)
     val steps = 200
     val dx = shape.x * 2 / steps
     val dy = shape.y / steps
