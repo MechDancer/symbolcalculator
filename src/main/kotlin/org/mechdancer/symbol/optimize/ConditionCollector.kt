@@ -24,7 +24,7 @@ class ConditionCollector {
         if (e is FunctionExpression) equations += e
     }
 
-    fun domain(e: Expression, init: Double?) {
+    operator fun set(e: Expression, init: Double?) {
         when (e) {
             is Constant -> Unit
             is Variable -> domains += e[`-∞`, zero]

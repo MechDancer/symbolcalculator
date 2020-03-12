@@ -1,5 +1,6 @@
 package org.mechdancer.symbol.system
 
+import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.core.Constant
@@ -33,7 +34,7 @@ class LocatingSystem(val maxMeasure: Double) {
         hashMapOf<Pair<Position, Position>, SortedMap<Long, Double>>()
 
     operator fun set(a: Position, b: Position, t: Long, d: Double) {
-        fun random(time: Long) = Vector3D(nextDouble(), nextDouble(), nextDouble())
+        fun random() = Vector3D(nextDouble(), nextDouble(), nextDouble())
         require(a != b)
         val u: Position
         val v: Position
@@ -42,8 +43,8 @@ class LocatingSystem(val maxMeasure: Double) {
         } else {
             u = b; v = a
         }
-        positions.update(a.beacon, { it += a.time }, { sortedMapOf(a.time to random(a.time)) })
-        positions.update(b.beacon, { it += b.time }, { sortedMapOf(b.time to random(b.time)) })
+        positions.update(a.beacon, { it += a.time }, { sortedMapOf(a.time to random()) })
+        positions.update(b.beacon, { it += b.time }, { sortedMapOf(b.time to random()) })
         relations.update(u, { it += v }, { sortedSetOf(v) })
         relations.update(v, { it += u }, { sortedSetOf(u) })
         measures.update(u to v, { it[t] = d }, { sortedMapOf(t to d) })
@@ -58,8 +59,7 @@ class LocatingSystem(val maxMeasure: Double) {
     operator fun get(beacon: Beacon): Map<Beacon, Vector3D> {
         val lastTime = positions[beacon]?.lastKey() ?: return mapOf(beacon to vector3DOfZero())
         val position = beacon.move(lastTime)
-        val candidates = relations[position]!!
-        return candidates
+        return relations[position]!!
             .toSortedSet()
             .apply { add(position) }
             .let(::calculate)
@@ -88,9 +88,13 @@ class LocatingSystem(val maxMeasure: Double) {
             val e = lengthMemory.compute(pair) { _, last ->
                 last ?: (a.toVector() - b.toVector()).length()
             }!!
-            measures[pair]?.run { collector += e - this[lastKey()]!! }
-//            ?: collector.domain(maxMeasure - e,
-//                                maxMeasure - (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!))
+            measures[pair]?.run {
+                val l = average()
+                collector += e - l
+            } ?: run {
+                val l = (positions[a.beacon, a.time]!! euclid positions[b.beacon, b.time]!!)
+                collector[maxMeasure - e] = maxMeasure - l
+            }
         }
         val (error, domain, lambda) = collector.build()
         // 构造初始值
@@ -118,9 +122,7 @@ class LocatingSystem(val maxMeasure: Double) {
                 }.toMap().let(painter)
             }
             .take(1000)
-            .firstOrLast { (_, step) ->
-                step < 1e-3
-            }
+            .firstOrLast { (_, step) -> step < 1e-3 }
             .first
         return targets.associateWith { p ->
             p.toVector().expressions.values

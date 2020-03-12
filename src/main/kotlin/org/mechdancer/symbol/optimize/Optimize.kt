@@ -18,7 +18,8 @@ typealias OptimizeStep<T> = (T) -> Pair<T, Double>
 /** 使用牛顿迭代求关于变量 [v] 的一元函数 [f] 极小值 */
 fun newton(
     f: Expression,
-    v: Variable
+    v: Variable,
+    positive: Boolean = false
 ): OptimizeStep<Double> {
     operator fun Expression.get(x: Double) =
         substitute(v, Constant(x)).toDouble()

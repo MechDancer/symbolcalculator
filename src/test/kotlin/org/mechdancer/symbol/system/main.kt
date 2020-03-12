@@ -18,7 +18,7 @@ import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 private const val maxMeasure = 30.0
-private const val interval = maxMeasure * .9
+private const val interval = maxMeasure * .95
 
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()

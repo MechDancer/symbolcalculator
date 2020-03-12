@@ -13,10 +13,8 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
     operator fun get(v: Variable) = expressions[v]
     override fun toString() = expressions.entries.joinToString("\n") { (v, e) -> "$v -> $e" }
 
-    private fun zip(others: ExpressionVector, block: (Expression, Expression) -> Expression): ExpressionVector {
-        require(expressions.keys == others.expressions.keys)
-        return ExpressionVector(expressions.mapValues { (v, e) -> block(e, others.expressions.getValue(v)) })
-    }
+    private fun zip(others: ExpressionVector, block: (Expression, Expression) -> Expression) =
+        ExpressionVector(expressions.mapValues { (v, e) -> others.expressions[v]?.let { block(e, it) } ?: e })
 
     operator fun plus(others: ExpressionVector) = zip(others, Expression::plus)
     operator fun minus(others: ExpressionVector) = zip(others, Expression::minus)

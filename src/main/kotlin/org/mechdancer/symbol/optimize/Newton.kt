@@ -71,6 +71,13 @@ fun dampingNewton(
             m = zero
             h
         }
-        fastestWithNewton(Sum[conditions.mapNotNull { it.check(p) } + error], p, space.order(dp))
+        // ***
+        val limit = conditions.mapNotNull { it.check(p) }
+        if (limit.isNotEmpty()) {
+            val en = Sum[limit.map { (_, e, _) -> e } + error]
+            val gn = limit.associate { (v, _, g) -> v to g }.let(::ExpressionVector)
+            fastestWithNewton(en, p, space.order(dp) + gn)
+        } else
+            fastestWithNewton(error, p, space.order(dp))
     }
 }
