@@ -7,12 +7,15 @@ import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.optimize.dampingNewton
 import org.mechdancer.symbol.optimize.optimize
+import java.util.*
 import kotlin.math.sqrt
 
 class SimulationWorld(
     map: Map<Beacon, Vector3D>,
     private val measureLimit: Long
 ) {
+    private val random = Random()
+
     private val positions =
         map.entries.map { (b, p) -> b.static() to p }
 
@@ -31,7 +34,7 @@ class SimulationWorld(
 
     fun preMeasures(): Map<Pair<Position, Position>, Double> {
         val c0 = soundVelocity(temperature)
-        return edges.mapValues { (_, t) -> t * c0 }
+        return edges.mapValues { (_, t) -> t * c0 + random.nextGaussian() * .01 }
     }
 
     fun measure(mobile: Position, p: Vector3D) =
@@ -40,7 +43,8 @@ class SimulationWorld(
             val ca = soundVelocity(actualTemperature)
             for ((beacon, p0) in positions) {
                 val t = (p euclid p0) / ca
-                if (t < measureLimit / 1000.0) yield(beacon to mobile to t * c0)
+                if (t < measureLimit / 1000.0)
+                    yield(beacon to mobile to t * c0 + random.nextGaussian() * .01)
             }
         }
 

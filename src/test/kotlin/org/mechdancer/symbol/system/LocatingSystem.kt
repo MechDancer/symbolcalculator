@@ -111,7 +111,7 @@ class LocatingSystem(val maxMeasure: Double) {
                 }.toMap().let(painter)
             }
             .take(1000)
-            .firstOrLast { (_, step) -> step < 1e-3 }
+            .firstOrLast { (_, step) -> step < 2e-3 }
             .first
         return targets.associateWith { p ->
             p.toVector().expressions.values

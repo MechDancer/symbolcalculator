@@ -13,8 +13,7 @@ import org.mechdancer.symbol.networksInfo
 import org.mechdancer.symbol.paint
 import org.mechdancer.symbol.paintFrame3
 import kotlin.concurrent.thread
-import kotlin.math.abs
-import kotlin.math.sqrt
+import kotlin.math.*
 import kotlin.system.measureTimeMillis
 
 private const val maxMeasure = 30.0
@@ -27,7 +26,7 @@ private fun deploy(p: Vector3D) = p + vector3D(gaussian(.1), gaussian(.1), gauss
 private val lx = .5
 private val ly = sqrt(1 - lx * lx)
 
-val shape = vector3D(lx, ly, 0) * interval
+private val shape = vector3D(lx, ly, 0) * interval + vector3D(0, 0, 1)
 private val beacons = (0 until 6).map { deploy(vector3D(it / 2, it % 2, 0) * shape) }
 
 fun main() {
@@ -59,19 +58,22 @@ fun main() {
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
 
     val mobile = Beacon(beacons.size)
-    val steps = 200
-    val dx = shape.x * 2 / steps
-    val dy = shape.y / steps
+    val steps = 400
+    val dTheta = 4 * PI / steps
     for (i in 0 until steps) {
         val time = System.currentTimeMillis()
         val position = mobile.move(time)
-        val m = vector3D(i * dx, i * dy, -1.5)
+
+        val theta = i * dTheta
+        val m = (vector3D(cos(theta), .5 * sin(theta), 0) * (1 - i.toDouble() / steps) +
+                 vector3D(1, .5, sin(8 * theta) * .5 - 1.5)) * shape
         for ((pair, l) in world.measure(position, m)) {
             val (a, b) = pair
             system[a, b, time] = l
         }
         val part = system[mobile].toPoints()
         val result = part.single().last().run { copy(z = -abs(z)) }
+        remote.paint("目标", m)
         remote.paint("历史", result)
         print("step $i: ")
         print(m euclid result)
