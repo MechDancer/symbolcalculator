@@ -10,31 +10,32 @@ import org.mechdancer.symbol.optimize.optimize
 import java.util.*
 import kotlin.math.sqrt
 
-class SimulationWorld(
-    map: Map<Beacon, Vector3D>,
-    private val measureLimit: Long
+/** 测距仿真 */
+class SimulationWorld internal constructor(
+    beacons: Map<Beacon, Vector3D>,
+    var temperature: Double,
+    actualTemperature: Double,
+    private val maxMeasureTime: Long,
+    private val sigmaMeasure: Double
 ) {
-    private val random = Random()
-
     private val positions =
-        map.entries.map { (b, p) -> b.static() to p }
+        beacons.entries.map { (b, p) -> b.static() to p }
 
-    var temperature = 15.0
-    var actualTemperature = 15.0
+    var actualTemperature = actualTemperature
         set(value) {
             if (value == field) return
             field = value
-            edges = positions.buildEdges(value, measureLimit)
+            edges = positions.buildEdges(value, maxMeasureTime)
         }
 
     private var edges =
-        positions.buildEdges(actualTemperature, measureLimit)
+        positions.buildEdges(actualTemperature, maxMeasureTime)
 
     fun edges() = edges.keys
 
     fun preMeasures(): Map<Pair<Position, Position>, Double> {
         val c0 = soundVelocity(temperature)
-        return edges.mapValues { (_, t) -> t * c0 + random.nextGaussian() * .01 }
+        return edges.mapValues { (_, t) -> t * c0 + gaussian(sigmaMeasure) }
     }
 
     fun measure(mobile: Position, p: Vector3D) =
@@ -43,12 +44,16 @@ class SimulationWorld(
             val ca = soundVelocity(actualTemperature)
             for ((beacon, p0) in positions) {
                 val t = (p euclid p0) / ca
-                if (t < measureLimit / 1000.0)
-                    yield(beacon to mobile to t * c0 + random.nextGaussian() * .01)
+                if (t < maxMeasureTime / 1000.0)
+                    yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
             }
         }
 
     companion object {
+        private val random = Random()
+
+        private fun gaussian(sigma: Double = 1.0) = random.nextGaussian() * sigma
+
         /** [t]℃ 时的声速 */
         fun soundVelocity(t: Double) = 20.048 * sqrt(t + 273.15)
 
