@@ -21,13 +21,13 @@ object TexRender {
 
     private fun dvi(tex: File): File {
         Runtime.getRuntime().exec(
-            arrayOf(
-                "latex",
-                "-interaction=batchmode",
-                "-halt-on-error",
-                "-output-directory=${dviDictionary.absolutePath}",
-                tex.absolutePath)
-        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
+                arrayOf(
+                    "latex",
+                    "-interaction=batchmode",
+                    "-halt-on-error",
+                    "-output-directory=${dviDictionary.absolutePath}",
+                    tex.absolutePath)
+            ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
             .waitFor()
         return tex.absolutePath.replace("tex", "dvi").let(::File)
     }
@@ -35,15 +35,15 @@ object TexRender {
     private fun svg(dvi: File): File {
         val new = File(svgDictionary, dvi.nameWithoutExtension + ".svg")
         Runtime.getRuntime().exec(
-            arrayOf(
-                "dvisvgm",
-                dvi.absolutePath,
-                "-n",
-                "-v",
-                "0",
-                "-o",
-                new.absolutePath)
-        ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
+                arrayOf(
+                    "dvisvgm",
+                    dvi.absolutePath,
+                    "-n",
+                    "-v",
+                    "0",
+                    "-o",
+                    new.absolutePath)
+            ).also { it.errorStream.bufferedReader().readText().takeIf(String::isNotBlank)?.run { println(this) } }
             .waitFor()
         return new
     }

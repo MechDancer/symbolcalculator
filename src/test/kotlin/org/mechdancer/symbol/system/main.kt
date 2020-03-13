@@ -34,6 +34,7 @@ fun main() {
     val remote = remoteHub("实验").apply {
         openAllNetworks()
         println(networksInfo())
+        paintFrame3("实际地图", grid.map { it.map(beacons::get) })
         system.painter = { paintFrame3("步骤", it.toPoints()) }
     }
 
