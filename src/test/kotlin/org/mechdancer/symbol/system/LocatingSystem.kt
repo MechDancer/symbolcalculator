@@ -3,13 +3,11 @@ package org.mechdancer.symbol.system
 import org.mechdancer.algebra.function.vector.euclid
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
-import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.minus
-import org.mechdancer.symbol.optimize.ConditionCollector
+import org.mechdancer.symbol.optimize.conditions
 import org.mechdancer.symbol.optimize.fastestBatchGD
 import org.mechdancer.symbol.optimize.firstOrLast
 import org.mechdancer.symbol.optimize.recurrence
@@ -21,7 +19,7 @@ import kotlin.collections.component2
 import kotlin.collections.set
 import kotlin.random.Random.Default.nextDouble
 
-class LocatingSystem(val maxMeasure: Double) {
+class LocatingSystem(private val maxMeasure: Double) {
     var painter: (Map<Beacon, Vector3D>) -> Unit = {}
 
     private val positions =
@@ -70,36 +68,28 @@ class LocatingSystem(val maxMeasure: Double) {
     /** 使用关心的部分关系更新坐标 */
     private fun calculate(targets: SortedSet<Position>)
         : Map<Position, Vector3D> {
-        // 构造变量空间和损失函数
-        val collector = ConditionCollector()
-        val list = targets.toList()
-        for (i in list.indices) for (j in i + 1 until list.size) {
-            val a = list[i]
-            val b = list[j]
-            val pair = a to b
-            val e = lengthMemory.computeIfAbsent(pair) { (a.toVector() - b.toVector()).length() }
-            measures[pair]?.run {
-                val l = average()
-                collector += e - l
-            } ?: if (a.isStatic() || b.isStatic()) {
-                val l = (positions[a]!! euclid positions[b]!!)
-                collector[maxMeasure - e] = maxMeasure - l
+        // 收集优化条件
+        val (errors, domain, init) = conditions {
+            // 构造方程
+            for (pair in targets.toList().lowerTriangular()) {
+                val (a, b) = pair
+                val e = lengthMemory.computeIfAbsent(pair) { (a.toVector() - b.toVector()).length() }
+                measures[pair]?.run {
+                    val l = average()
+                    this@conditions += e - l
+                } ?: if (a.isStatic() || b.isStatic()) {
+                    val l = positions[a]!! euclid positions[b]!!
+                    this[domain(maxMeasure - e)] = maxMeasure - l
+                }
             }
+            // 补充初始值
+            for (target in targets)
+                for ((v, n) in target.toVector().expressions.values.zip(positions[target]!!.toList()))
+                    this[v as Variable] = n
         }
-        val (error, domain, lambda) = collector.build()
-        // 构造初始值
-        val init = targets.flatMap {
-                it.toVector()
-                    .expressions
-                    .values
-                    .filterIsInstance<Variable>()
-                    .zip(positions[it]!!.toList().map(::Constant))
-            }.toMap().toMutableMap()
-            .also { for ((v, value) in lambda) it[v] = Constant(value!!) }
-            .let(::ExpressionVector)
-        val space = VariableSpace(init.expressions.keys + lambda.keys)
-        // 优化
-        val f = fastestBatchGD(error.sum(), space, *domain)
+        val space = VariableSpace(init.expressions.keys)
+        // 构造优化步骤函数
+        val f = fastestBatchGD(errors.sum(), space, *domain)
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
@@ -123,6 +113,12 @@ class LocatingSystem(val maxMeasure: Double) {
     }
 
     private companion object {
+        fun <T> List<T>.lowerTriangular() =
+            sequence {
+                for (i in indices) for (j in i + 1 until size)
+                    yield(get(i) to get(j))
+            }
+
         fun <TK, TV> HashMap<TK, TV>.update(key: TK, block: (TV) -> Unit, default: () -> TV) =
             compute(key) { _, last -> last?.also(block) ?: default() }
 

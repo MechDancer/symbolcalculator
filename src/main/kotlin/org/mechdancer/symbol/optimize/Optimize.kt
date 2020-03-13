@@ -19,8 +19,7 @@ typealias OptimizeStep<T> = (T) -> Pair<T, Double>
 /** 使用牛顿迭代求关于变量 [v] 的一元函数 [f] 极小值 */
 fun newton(
     f: Expression,
-    v: Variable,
-    positive: Boolean = false
+    v: Variable
 ): OptimizeStep<Double> {
     operator fun Expression.get(x: Double) =
         substitute(v, Constant(x)).toDouble()
@@ -47,7 +46,7 @@ internal fun fastestWithNewton(
 }
 
 /** 映射不等式约束并用牛顿法最速下降 */
-internal fun Array<out Domain>.fastestOf(
+internal inline fun Array<out Domain>.fastestOf(
     e: Expression,
     p: ExpressionVector,
     dp: ExpressionVector,
@@ -56,7 +55,7 @@ internal fun Array<out Domain>.fastestOf(
     val limit = mapNotNull { it.which(p) }
     return if (limit.isNotEmpty()) {
         val en = Sum[limit.map { (_, e, _) -> e } + e]
-        val dn = limit.associate { (v, _, g) -> v to g }.let(::ExpressionVector)
+        val dn = limit.associate { (v, _, d) -> v to d }.let(::ExpressionVector)
         fastestWithNewton(en, p, dp + dn)
     } else
         fastestWithNewton(e, p, dp)
@@ -89,9 +88,7 @@ fun <T> recurrence(init: T, block: (T) -> T) =
     }
 
 /** 收敛或退出 */
-inline fun <T : Any> Sequence<T>.firstOrLast(
-    block: (T) -> Boolean
-): T {
+inline fun <T : Any> Sequence<T>.firstOrLast(block: (T) -> Boolean): T {
     var last: T? = null
     for (t in this) {
         if (block(t)) return t
@@ -99,3 +96,6 @@ inline fun <T : Any> Sequence<T>.firstOrLast(
     }
     return last ?: throw NoSuchElementException("Sequence is empty.")
 }
+
+inline fun conditions(block: ConditionCollector.() -> Unit) =
+    ConditionCollector().also(block).build()
