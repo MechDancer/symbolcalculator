@@ -1,4 +1,4 @@
-package org.mechdancer.symbol.system
+package org.mechdancer.symbol.experiments.system
 
 import org.mechdancer.algebra.function.vector.*
 import org.mechdancer.algebra.implement.vector.Vector3D
@@ -9,10 +9,15 @@ import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.symbol.networksInfo
 import org.mechdancer.symbol.paint
 import org.mechdancer.symbol.paintFrame3
+import org.mechdancer.symbol.system.Beacon
+import org.mechdancer.symbol.system.LocatingSystem
+import org.mechdancer.symbol.system.Position
 import org.mechdancer.symbol.system.WorldBuilderDsl.Companion.world
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
+
+// 6 个固定标签组成矩形，1 个移动标签沿矩形对角线运动
 
 private const val maxMeasure = 30.0
 
@@ -40,7 +45,8 @@ fun main() {
 
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
 
-    val mobile = Beacon(beacons.size)
+    val mobile =
+        Beacon(beacons.size)
     val steps = 400
     val dl = vector3D(2, 1, 0) * shape / steps
     var m = vector3D(0, 0, -1.5) - dl
@@ -70,9 +76,6 @@ private operator fun LocatingSystem.set(t: Long, map: Map<Pair<Position, Positio
 }
 
 private fun Map<Beacon, Vector3D>.toPoints(): List<List<Vector3D>> {
-    val tf = entries.groupBy { (key, _) -> key.id in beacons.indices }
-        .getValue(true)
-        .map { (key, p) -> beacons[key.id] to p }
-        .toTransformationWithSVD(1e-8)
+    val tf = mapNotNull { (key, p) -> beacons.getOrNull(key.id)?.to(p) }.toTransformationWithSVD(1e-8)
     return listOf(map { (_, p) -> (tf * p).to3D() })
 }

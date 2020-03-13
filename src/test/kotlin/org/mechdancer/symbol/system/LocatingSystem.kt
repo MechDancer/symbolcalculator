@@ -100,8 +100,7 @@ class LocatingSystem(private val maxMeasure: Double) {
                         .to3D()
                 }.toMap().let(painter)
             }
-            .take(1000)
-            .firstOrLast { (_, step) -> step < 2e-3 }
+            .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         return targets.associateWith { p ->
             p.toVector().expressions.values
@@ -122,7 +121,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         fun <TK, TV> HashMap<TK, TV>.update(key: TK, block: (TV) -> Unit, default: () -> TV) =
             compute(key) { _, last -> last?.also(block) ?: default() }
 
-        operator fun <T> HashMap<Beacon, SortedMap<Long, T>>.get(p: Position) =
+        operator fun <T> Map<Beacon, Map<Long, T>>.get(p: Position) =
             get(p.beacon)?.get(p.time)
 
         operator fun <T> HashMap<Beacon, SortedMap<Long, T>>.set(p: Position, t: T) =

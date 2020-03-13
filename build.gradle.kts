@@ -15,7 +15,7 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     // 矩阵运算
-    implementation("org.mechdancer", "linearalgebra", "+")
+    implementation("org.mechdancer", "linearalgebra", "0.2.8-snapshot-3")
 
     testImplementation("junit", "junit", "+")
     testImplementation(kotlin("test-junit"))

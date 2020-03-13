@@ -97,5 +97,6 @@ inline fun <T : Any> Sequence<T>.firstOrLast(block: (T) -> Boolean): T {
     return last ?: throw NoSuchElementException("Sequence is empty.")
 }
 
+/** 收集条件 */
 inline fun conditions(block: ConditionCollector.() -> Unit) =
     ConditionCollector().also(block).build()

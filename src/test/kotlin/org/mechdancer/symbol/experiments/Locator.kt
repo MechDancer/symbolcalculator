@@ -37,7 +37,7 @@ class Locator(beacons: List<Vector3D>) {
                         ?.let { it.sum() / (2 * it.size) }
                     ?: return run { state = Preparing; null }
         val init = last.toPoint()
-        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, space, .5, Z[`-∞`, zero]))
+        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, space, Z[`-∞`, zero]))
         val new = 3 - ln(error[result])
         val old = 3 - ln(error[init])
         val p = result.toVector()
