@@ -32,7 +32,9 @@ private fun deploy(p: Vector3D) = p + java.util.Random().run {
 }
 
 fun main() {
-    val world = world(beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap())
+    val world = world(beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap()) {
+        this.sigmaMeasure = .005
+    }
     val grid = world.edges().map { it.toList().map { (b, _) -> b.id } }
     val system = LocatingSystem(maxMeasure).apply { this[-1L] = world.preMeasures() }
 
@@ -47,7 +49,7 @@ fun main() {
 
     val mobile =
         Beacon(beacons.size)
-    val steps = 400
+    val steps = 200
     val dl = vector3D(2, 1, 0) * shape / steps
     var m = vector3D(0, 0, -1.5) - dl
     for (i in 0 until steps) {

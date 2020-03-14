@@ -1,18 +1,13 @@
 package org.mechdancer.symbol.system
 
-import org.mechdancer.algebra.function.vector.euclid
+import org.mechdancer.algebra.function.vector.*
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
+import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.VariableSpace
-import org.mechdancer.symbol.minus
-import org.mechdancer.symbol.optimize.conditions
-import org.mechdancer.symbol.optimize.fastestBatchGD
-import org.mechdancer.symbol.optimize.firstOrLast
-import org.mechdancer.symbol.optimize.recurrence
-import org.mechdancer.symbol.sum
-import org.mechdancer.symbol.toDouble
+import org.mechdancer.symbol.optimize.*
+import org.mechdancer.symbol.system.LocatingSystem.Companion.get
 import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -35,8 +30,8 @@ class LocatingSystem(private val maxMeasure: Double) {
         require(a != b)
         positions.update(a) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
         positions.update(b) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
-        relations.update(a, { it += b }, { sortedSetOf(b) })
-        relations.update(b, { it += a }, { sortedSetOf(a) })
+        relations.update(a, { it += b }, { sortedSetOf(a, b) })
+        relations.update(b, { it += a }, { sortedSetOf(b, a) })
         measures.update(if (a < b) a to b else b to a, { it += d }, { mutableListOf(d) })
     }
 
@@ -50,8 +45,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         val lastTime = positions[beacon]?.lastKey() ?: return mapOf(beacon to vector3DOfZero())
         val position = beacon.move(lastTime)
         return relations[position]!!
-            .toSortedSet()
-            .apply { add(position) }
+            .also { calculate(position, it) }
             .let(::calculate)
             .mapKeys { (key, _) -> key.beacon }
     }
@@ -68,6 +62,7 @@ class LocatingSystem(private val maxMeasure: Double) {
     /** 使用关心的部分关系更新坐标 */
     private fun calculate(targets: SortedSet<Position>)
         : Map<Position, Vector3D> {
+//        if (targets.size <= 4) return targets.associateWith { positions[it]!! }
         // 收集优化条件
         val (errors, domain, init) = conditions {
             // 构造方程
@@ -84,8 +79,8 @@ class LocatingSystem(private val maxMeasure: Double) {
             }
             // 补充初始值
             for (target in targets)
-                for ((v, n) in target.toVector().expressions.values.zip(positions[target]!!.toList()))
-                    this[v as Variable] = n
+                for ((v, n) in target.toVector(positions[target]!!).expressions)
+                    this[v] = n.toDouble()
         }
         val space = VariableSpace(init.expressions.keys)
         // 构造优化步骤函数
@@ -93,22 +88,49 @@ class LocatingSystem(private val maxMeasure: Double) {
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
-                targets.map { b ->
-                    b.beacon to b.toVector().expressions.values
-                        .toList()
-                        .map { p[it as Variable]!!.toDouble() }
-                        .to3D()
-                }.toMap().let(painter)
+                targets.associate { b -> b.beacon to b.variables.map { p[it]!!.toDouble() }.to3D() }.let(painter)
             }
+            .take(1000)
             .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         return targets.associateWith { p ->
-            p.toVector().expressions.values
-                .toList()
-                .map { result[it as Variable]!!.toDouble() }
-                .to3D()
-                .also { positions[p] = it }
+            p.variables.map { result[it]!!.toDouble() }.to3D().also { positions[p] = it }
         }
+    }
+
+    private fun calculate(p: Position, beacons: SortedSet<Position>) {
+        val (errors, domains, init) = conditions {
+            loop@ for (b in beacons)
+                when {
+                    b < p -> b to p
+                    p < b -> p to b
+                    else  -> continue@loop
+                }
+                    .let { lengthMemory.computeIfAbsent(it) { (p.toVector() - b.toVector()).length() } - measures[it]!!.average() }
+                    .substitute(b.toVector(positions[b]!!))
+                    .also { this += it }
+            if (beacons.size == 4) {
+                val plane = (beacons - p).toList()
+                val (a, b, c) = plane.map { positions[it]!! }
+                val u = (b - a cross c - a).normalize()
+                val l = p.toVector().expressions.toList()
+                    .sumBy { (v, e) ->
+                        when (v.name) {
+                            "x"  -> (e - a.x) * u.x
+                            "y"  -> (e - a.y) * u.y
+                            "z"  -> (e - a.z) * u.z
+                            else -> throw IllegalArgumentException()
+                        }
+                    }
+                this[domain(1 - l * l)] = 1 - ((positions[p]!! - a) dot u).let { it * it }
+            }
+            for ((v, n) in p.toVector(positions[p]!!).expressions)
+                this[v] = n.toDouble()
+        }
+        // 构造优化步骤函数
+        val f = dampingNewton(errors.sum(), VariableSpace(init.expressions.keys), *domains)
+        val result = optimize(init, 20, 1e-4, f)
+        positions[p] = p.variables.map { result[it]!!.toDouble() }.to3D()
     }
 
     private companion object {

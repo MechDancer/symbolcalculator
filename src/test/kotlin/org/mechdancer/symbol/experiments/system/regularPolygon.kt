@@ -16,6 +16,7 @@ import org.mechdancer.symbol.system.Position
 import org.mechdancer.symbol.system.WorldBuilderDsl.Companion.world
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.collections.component3
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -25,7 +26,7 @@ import kotlin.system.measureTimeMillis
 // 6 个固定标签组成矩形，1 个移动标签沿矩形对角线运动
 
 private const val maxMeasure = 30.0
-private const val interval = maxMeasure * .75
+private const val interval = maxMeasure * .95
 private const val edgeCount = 6
 
 private val beacons = sequence {
@@ -54,7 +55,7 @@ fun main() {
 
     println("optimize in ${measureTimeMillis { system.optimize() }}ms")
 
-    val mobile = Beacon(beacons.size)
+    val mobile = Beacon(100)
     val steps = 400
     val l = vector3D(1, 1, 0) * interval * cos(PI / edgeCount)
     for (i in 0 until steps) {
@@ -85,6 +86,12 @@ private operator fun LocatingSystem.set(t: Long, map: Map<Pair<Position, Positio
 }
 
 private fun Map<Beacon, Vector3D>.toPoints(): List<List<Vector3D>> {
-    val tf = mapNotNull { (key, p) -> beacons.getOrNull(key.id)?.to(p) }.toTransformationWithSVD(1e-8)
+    val pairs = mapNotNull { (key, p) -> beacons.getOrNull(key.id)?.to(p) }.toMutableList()
+    val (a, b, c) = pairs
+    val (a0, a1) = a
+    val (b0, b1) = b
+    val (c0, c1) = c
+    pairs += (b0 - a0 cross c0 - a0) + a0 to (b1 - a1 cross c1 - a1) + a1
+    val tf = pairs.toTransformationWithSVD(1e-8)
     return listOf(map { (_, p) -> (tf * p).to3D() })
 }

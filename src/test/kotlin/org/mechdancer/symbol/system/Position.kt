@@ -1,5 +1,7 @@
 package org.mechdancer.symbol.system
 
+import org.mechdancer.algebra.implement.vector.Vector3D
+import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 
@@ -10,15 +12,20 @@ data class Position(
     val beacon: Beacon,
     val time: Long
 ) : Comparable<Position> {
+    val variables by lazy {
+        val postfix = if (time > 0) "${beacon.id}_$time" else beacon.id.toString()
+        listOf(Variable("x$postfix"),
+               Variable("y$postfix"),
+               Variable("z$postfix"))
+    }
+
     fun isStatic() = time < 0
 
-    fun toVector(): ExpressionVector {
-        val postfix = if (time > 0) "${beacon.id}_$time" else beacon.id.toString()
-        return ExpressionVector(mapOf(
-            x to Variable("x$postfix"),
-            y to Variable("y$postfix"),
-            z to Variable("z$postfix")))
-    }
+    fun toVector() =
+        ExpressionVector(prefix.zip(variables).toMap())
+
+    fun toVector(value: Vector3D) =
+        ExpressionVector(variables.zip(value.toList().map(::Constant)).toMap())
 
     override fun compareTo(other: Position) =
         beacon.compareTo(other.beacon)
@@ -29,5 +36,6 @@ data class Position(
         val x = Variable("x")
         val y = Variable("y")
         val z = Variable("z")
+        val prefix = listOf(x, y, z)
     }
 }
