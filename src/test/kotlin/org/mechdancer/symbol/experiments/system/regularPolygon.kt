@@ -17,23 +17,23 @@ import org.mechdancer.symbol.system.WorldBuilderDsl.Companion.world
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.component3
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.*
 import kotlin.system.measureTimeMillis
 
 // 6 个固定标签组成矩形，1 个移动标签沿矩形对角线运动
 
 private const val maxMeasure = 30.0
-private const val interval = maxMeasure * .95
 private const val edgeCount = 6
+private val radius = when {
+    edgeCount < 6 -> maxMeasure * .95 * .5 / tan(PI / edgeCount)
+    else          -> maxMeasure * .95
+}
 
 private val beacons = sequence {
     yield(vector3DOfZero())
     for (i in 0 until edgeCount) {
         val theta = 2 * PI / edgeCount * i
-        yield(vector3D(cos(theta), sin(theta), 0) * interval)
+        yield(vector3D(cos(theta), sin(theta), 0) * radius)
     }
 }.map(::deploy).toList()
 
@@ -42,6 +42,8 @@ private fun deploy(p: Vector3D) = p + java.util.Random().run {
 }
 
 fun main() {
+    println("面积/标签数 = ${edgeCount * radius * radius * sin(2 * PI / edgeCount) / 2 / (edgeCount + 1)}")
+
     val world = world(beacons.mapIndexed { i, p -> Beacon(i) to p }.toMap())
     val grid = world.edges().map { it.toList().map { (b, _) -> b.id } }
     val system = LocatingSystem(maxMeasure).apply { this[-1L] = world.preMeasures() }
@@ -57,7 +59,7 @@ fun main() {
 
     val mobile = Beacon(100)
     val steps = 400
-    val l = vector3D(1, 1, 0) * interval * cos(PI / edgeCount)
+    val l = vector3D(1, 1, 0) * radius * cos(PI / edgeCount)
     for (i in 0 until steps) {
         val k = 1 - i.toDouble() / steps
         val theta = 4 * PI * k
