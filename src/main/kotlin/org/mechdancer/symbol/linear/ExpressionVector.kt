@@ -1,6 +1,5 @@
 package org.mechdancer.symbol.linear
 
-import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
@@ -11,6 +10,7 @@ import kotlin.streams.toList
 inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
     val dim get() = expressions.size
     operator fun get(v: Variable) = expressions[v]
+    operator fun get(v: Iterable<Variable>) = v.map(expressions::get)
     override fun toString() = expressions.entries.joinToString("\n") { (v, e) -> "$v -> $e" }
 
     private fun zip(others: ExpressionVector, block: (Expression, Expression) -> Expression) =
@@ -39,8 +39,6 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
                 r.mapValues { (_, e0) -> e0.substitute(v, e) }
             }.let(::ExpressionVector)
 
-    fun toVector(values: ExpressionVector, order: VariableSpace): Vector {
-        val valueSave = substitute(values)
-        return order.variables.map { valueSave[it]!!.toDouble() }.toListVector()
-    }
+    fun toVector(order: Iterable<Variable>) =
+        get(order).map { it!!.toDouble() }.toListVector()
 }

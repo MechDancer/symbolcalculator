@@ -1,7 +1,8 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.algebra.implement.vector.Vector2D
+import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.symbol.core.Constant
-import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
@@ -26,35 +27,43 @@ val variable
 fun variable(collector: MutableSet<Variable>) =
     VariableProperty(collector)
 
-// 定义变量空间
-
-class VariableSpaceProperty(
-    private val names: Set<String>,
-    private val range: Iterable<Any>)
-    : ReadOnlyProperty<Any?, VariableSpace> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>): VariableSpace {
-        val pre = if (names.isEmpty()) listOf(property.name) else names.filterNot(String::isBlank)
-        val post = range.map(Any::toString).toList().takeUnless(Collection<*>::isEmpty) ?: listOf("")
-
-        return pre.flatMap { name -> post.map { i -> "$name$i" } }
-            .map(::Variable).toSet().let(::VariableSpace)
-    }
-}
-
-fun variableSpace(vararg names: String, indices: Iterable<Any> = emptyList()) =
-    VariableSpaceProperty(names.toSet(), indices)
-
-fun variables(vararg names: String) =
-    VariableSpace(names.map(::Variable).toSet())
-
 fun point(vararg pairs: Pair<Variable, Number>) =
     ExpressionVector(pairs.associate { (v, x) -> v to Constant(x.toDouble()) })
-
-fun field(vararg pairs: Pair<Variable, Expression>) =
-    ExpressionVector(pairs.associate { (v, e) -> v to e })
 
 // 变量收集器
 
 fun collector() = mutableSetOf<Variable>()
 
 fun MutableSet<Variable>.toSpace() = VariableSpace(this)
+
+fun Vector2D.toExpression(
+    vx: Variable = Variable("x"),
+    vy: Variable = Variable("y")
+) =
+    ExpressionVector(mapOf(vx to Constant(x),
+                           vy to Constant(y)))
+
+fun Vector3D.toExpression(
+    vx: Variable = Variable("x"),
+    vy: Variable = Variable("y"),
+    vz: Variable = Variable("z")
+) =
+    ExpressionVector(mapOf(vx to Constant(x),
+                           vy to Constant(y),
+                           vz to Constant(z)))
+
+fun ExpressionVector.toVector2D(
+    x: Variable = Variable("x"),
+    y: Variable = Variable("y")
+) =
+    Vector2D(expressions.getValue(x).toDouble(),
+             expressions.getValue(y).toDouble())
+
+fun ExpressionVector.toVector3D(
+    x: Variable = Variable("x"),
+    y: Variable = Variable("y"),
+    z: Variable = Variable("z")
+) =
+    Vector3D(expressions.getValue(x).toDouble(),
+             expressions.getValue(y).toDouble(),
+             expressions.getValue(z).toDouble())

@@ -33,4 +33,11 @@ inline class VariableSpace(val variables: Set<Variable>) {
 
     /** 求变量空间的差空间 */
     operator fun minus(others: VariableSpace) = VariableSpace(variables - others.variables)
+
+    companion object {
+        fun variables(vararg names: String) = VariableSpace(names.map(::Variable).toSet())
+        fun variables(range: CharRange) = VariableSpace(range.map { Variable(it.toString()) }.toSet())
+        val xyz = variables('x'..'z')
+        val characters = variables('a'..'z')
+    }
 }

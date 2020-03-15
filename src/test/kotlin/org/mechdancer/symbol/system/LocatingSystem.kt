@@ -2,12 +2,12 @@ package org.mechdancer.symbol.system
 
 import org.mechdancer.algebra.function.vector.*
 import org.mechdancer.algebra.implement.vector.Vector3D
+import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.linear.VariableSpace
 import org.mechdancer.symbol.optimize.*
-import org.mechdancer.symbol.system.LocatingSystem.Companion.get
 import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -68,7 +68,8 @@ class LocatingSystem(private val maxMeasure: Double) {
             // 构造方程
             for (pair in targets.toList().lowerTriangular()) {
                 val (a, b) = pair
-                val e = lengthMemory.computeIfAbsent(pair) { (a.toVector() - b.toVector()).length() }
+                val e =
+                    lengthMemory.computeIfAbsent(pair) { (a.toExpressionVector() - b.toExpressionVector()).length() }
                 measures[pair]?.run {
                     val l = average()
                     this@conditions += e - l
@@ -79,7 +80,7 @@ class LocatingSystem(private val maxMeasure: Double) {
             }
             // 补充初始值
             for (target in targets)
-                for ((v, n) in target.toVector(positions[target]!!).expressions)
+                for ((v, n) in target.toExpressionVector(positions[target]!!).expressions)
                     this[v] = n.toDouble()
         }
         val space = VariableSpace(init.expressions.keys)
@@ -88,13 +89,13 @@ class LocatingSystem(private val maxMeasure: Double) {
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
-                targets.associate { b -> b.beacon to b.variables.map { p[it]!!.toDouble() }.to3D() }.let(painter)
+                targets.associate { b -> b.beacon to p.toVector(b.variables).to3D() }.let(painter)
             }
             .take(1000)
             .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         return targets.associateWith { p ->
-            p.variables.map { result[it]!!.toDouble() }.to3D().also { positions[p] = it }
+            result.toVector(p.variables).to3D().also { positions[p] = it }
         }
     }
 
@@ -106,14 +107,14 @@ class LocatingSystem(private val maxMeasure: Double) {
                     p < b -> p to b
                     else  -> continue@loop
                 }
-                    .let { lengthMemory.computeIfAbsent(it) { (p.toVector() - b.toVector()).length() } - measures[it]!!.average() }
-                    .substitute(b.toVector(positions[b]!!))
+                    .let { lengthMemory.computeIfAbsent(it) { (p.toExpressionVector() - b.toExpressionVector()).length() } - measures[it]!!.average() }
+                    .substitute(b.toExpressionVector(positions[b]!!))
                     .also { this += it }
             if (beacons.size == 4) {
                 val plane = (beacons - p).toList()
                 val (a, b, c) = plane.map { positions[it]!! }
                 val u = (b - a cross c - a).normalize()
-                val l = p.toVector().expressions.toList()
+                val l = p.toExpressionVector().expressions.toList()
                     .sumBy { (v, e) ->
                         when (v.name) {
                             "x"  -> (e - a.x) * u.x
@@ -124,13 +125,13 @@ class LocatingSystem(private val maxMeasure: Double) {
                     }
                 this[domain(1 - l * l)] = 1 - ((positions[p]!! - a) dot u).let { it * it }
             }
-            for ((v, n) in p.toVector(positions[p]!!).expressions)
+            for ((v, n) in p.toExpressionVector(positions[p]!!).expressions)
                 this[v] = n.toDouble()
         }
         // 构造优化步骤函数
         val f = dampingNewton(errors.sum(), VariableSpace(init.expressions.keys), *domains)
         val result = optimize(init, 20, 1e-4, f)
-        positions[p] = p.variables.map { result[it]!!.toDouble() }.to3D()
+        positions[p] = result.toVector(p.variables).to3D()
     }
 
     private companion object {
@@ -151,7 +152,5 @@ class LocatingSystem(private val maxMeasure: Double) {
 
         fun <T> HashMap<Beacon, SortedMap<Long, T>>.update(p: Position, block: () -> T) =
             update(p.beacon, { it[p.time] = it[it.lastKey()] }, { sortedMapOf(p.time to block()) })
-
-        fun List<Double>.to3D() = Vector3D(get(0), get(1), get(2))
     }
 }

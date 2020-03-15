@@ -21,10 +21,10 @@ data class Position(
 
     fun isStatic() = time < 0
 
-    fun toVector() =
+    fun toExpressionVector() =
         ExpressionVector(prefix.zip(variables).toMap())
 
-    fun toVector(value: Vector3D) =
+    fun toExpressionVector(value: Vector3D) =
         ExpressionVector(variables.zip(value.toList().map(::Constant)).toMap())
 
     override fun compareTo(other: Position) =

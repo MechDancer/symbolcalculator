@@ -5,7 +5,6 @@ import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector3D
 import org.mechdancer.symbol.*
-import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import org.mechdancer.symbol.core.Constant.Companion.`-∞`
 import org.mechdancer.symbol.core.Constant.Companion.zero
@@ -15,6 +14,7 @@ import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.experiments.Locator.State.Preparing
 import org.mechdancer.symbol.experiments.Locator.State.Working
 import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.VariableSpace.Companion.xyz
 import org.mechdancer.symbol.optimize.dampingNewton
 import org.mechdancer.symbol.optimize.get
 import org.mechdancer.symbol.optimize.optimize
@@ -27,7 +27,7 @@ class Locator(beacons: List<Vector3D>) {
         private set
 
     private var last = vector3D(0, 0, -3)
-    private val struct = beacons.map { (space.ordinaryField - it.toPoint()).length() }
+    private val struct = beacons.map { (xyz.ordinaryField - it.toExpression()).length() }
 
     operator fun invoke(list: List<Double>): Vector3D? {
         val error = struct
@@ -36,11 +36,11 @@ class Locator(beacons: List<Vector3D>) {
                         .takeIf { it.size >= 3 }
                         ?.let { it.sum() / (2 * it.size) }
                     ?: return run { state = Preparing; null }
-        val init = last.toPoint()
-        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, space, Z[`-∞`, zero]))
+        val init = last.toExpression()
+        val result = optimize(init, Int.MAX_VALUE, 5e-6, dampingNewton(error, xyz, z[`-∞`, zero]))
         val new = 3 - ln(error[result])
         val old = 3 - ln(error[init])
-        val p = result.toVector()
+        val p = result.toVector3D()
         when (state) {
             Preparing -> {
                 last = when {
@@ -59,21 +59,7 @@ class Locator(beacons: List<Vector3D>) {
     }
 
     private companion object {
-        private val X = Variable("x")
-        private val Y = Variable("y")
-        private val Z = Variable("z")
-        private val space = variables("x", "y", "z")
-
-        private fun Vector3D.toPoint() =
-            ExpressionVector(mapOf(X to Constant(x),
-                                   Y to Constant(y),
-                                   Z to Constant(z)))
-
-        private fun ExpressionVector.toVector() =
-            vector3D(this[X]!!.toDouble(),
-                     this[Y]!!.toDouble(),
-                     this[Z]!!.toDouble())
-
+        private val z = Variable("z")
         private operator fun Expression.get(values: ExpressionVector) =
             substitute(values).toDouble()
     }
