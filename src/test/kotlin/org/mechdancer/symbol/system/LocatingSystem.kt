@@ -69,7 +69,6 @@ class LocatingSystem(private val maxMeasure: Double) {
     /** 使用关心的部分关系更新坐标 */
     private fun calculate(targets: SortedSet<Position>)
         : Map<Position, Vector3D> {
-//        if (targets.size <= 4) return targets.associateWith { positions[it]!! }
         // 收集优化条件
         val (errors, domain, init) = conditions {
             // 构造方程

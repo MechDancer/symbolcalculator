@@ -1,8 +1,14 @@
 package org.mechdancer.symbol.system
 
+import org.mechdancer.algebra.function.matrix.cofactorOf
+import org.mechdancer.algebra.function.matrix.inverse
+import org.mechdancer.algebra.function.matrix.svd
+import org.mechdancer.algebra.function.matrix.times
 import org.mechdancer.algebra.function.vector.*
+import org.mechdancer.algebra.implement.matrix.builder.foldToColumns
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.to3D
+import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.geometry.transformation.toTransformationWithSVD
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.optimize.dampingNewton
@@ -10,6 +16,7 @@ import org.mechdancer.symbol.optimize.optimize
 import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /** 测距仿真 */
@@ -53,12 +60,24 @@ class SimulationWorld internal constructor(
 
     fun transform(map: Map<Beacon, Vector3D>): List<Vector3D> {
         val pairs = map.mapNotNull { (key, p) -> beacons[key]?.to(p) }.toMutableList()
-        val (a, b, c) = pairs
-        val (a0, a1) = a
-        val (b0, b1) = b
-        val (c0, c1) = c
-        pairs += (b0 - a0 cross c0 - a0) + a0 to (b1 - a1 cross c1 - a1) + a1
-        val tf = pairs.toTransformationWithSVD(1e-8)
+        val tf = pairs.toTransformationWithSVD(1e-8).run {
+            val (_, w, _) = matrix.cofactorOf(3, 3).svd()
+            List(dim) { i -> w[i, i] }
+                .map { if (abs(abs(it) - 1) < .1) .0 else 1.0 }
+                .takeIf { list -> list.any { it != .0 } }
+                ?.toListVector()
+                ?.let {
+                    val (a, b, c) = pairs
+                    val (a1, a0) = a
+                    val (b1, b0) = b
+                    val (c1, c0) = c
+                    val new = baseMatrixOf(b1 - a1, c1 - a1) *
+                              (baseMatrixOf(b0 - a0, c0 - a0).inverse() * it)
+                    pairs += (new + a1).to3D() to (it + a0).to3D()
+                    pairs.toTransformationWithSVD(1e-8)
+                }
+            ?: this
+        }
         return map.map { (_, p) -> (tf * p).to3D() }
     }
 
@@ -66,6 +85,10 @@ class SimulationWorld internal constructor(
         private val random = Random()
 
         private fun gaussian(sigma: Double = 1.0) = random.nextGaussian() * sigma
+
+        // 从空间中2个不共线的向量构造空间的一个基向量矩阵
+        private fun baseMatrixOf(x: Vector3D, y: Vector3D) =
+            (x.toList() + y.toList() + (x cross y).toList()).foldToColumns(3)
 
         /** [t]℃ 时的声速 */
         fun soundVelocity(t: Double) = 20.048 * sqrt(t + 273.15)

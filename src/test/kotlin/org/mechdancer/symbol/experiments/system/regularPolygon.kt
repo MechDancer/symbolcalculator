@@ -7,7 +7,6 @@ import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.vector2D
 import org.mechdancer.algebra.implement.vector.vector3D
-import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.geometry.angle.toRad
 import org.mechdancer.geometry.angle.toVector
 import org.mechdancer.remote.presets.remoteHub
@@ -30,7 +29,7 @@ private val radius = when {
 }
 
 private val beacons = sequence {
-    yield(vector3DOfZero())
+    yield(Vector3D(.0, .0, .0))
     for (i in 0 until edgeCount) {
         val theta = 2 * PI / edgeCount * i
         yield(vector3D(cos(theta), sin(theta), 0) * radius)
