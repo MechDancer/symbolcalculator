@@ -17,11 +17,17 @@ import org.mechdancer.symbol.toDouble
 fun batchGD(
     error: Expression,
     space: VariableSpace,
+    vararg domains: Domain,
     alpha: (Double) -> Double
 ): OptimizeStep<ExpressionVector> {
     val gradient = Hamiltonian.dfToGrad(error.d(), space)
     return { p ->
-        val g = gradient.substitute(p)
+        val limit = domains.mapNotNull { it.mapExp(p) }
+        val g = if (limit.isNotEmpty()) {
+            gradient + limit.associate { (v, _, d) -> v to d }.let(::ExpressionVector)
+        } else {
+            gradient
+        }.substitute(p)
         val l = g.length().toDouble()
         val a = alpha(l)
         p - g * a to l * a
