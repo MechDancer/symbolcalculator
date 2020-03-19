@@ -35,6 +35,13 @@ class LocatingSystem(private val maxMeasure: Double) {
         measures.update(if (a < b) a to b else b to a, { it += d }, { mutableListOf(d) })
     }
 
+    operator fun set(t: Long, map: Map<Pair<Position, Position>, Double>) {
+        for ((pair, l) in map) {
+            val (a, b) = pair
+            this[a, b, t] = l
+        }
+    }
+
     /** 使用所有已知的测量数据，优化所有坐标 */
     fun optimize() {
         calculate(positions.flatMap { (beacon, set) -> set.keys.map(beacon::move) }.toSortedSet())

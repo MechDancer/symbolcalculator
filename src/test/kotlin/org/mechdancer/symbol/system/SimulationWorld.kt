@@ -1,18 +1,20 @@
 package org.mechdancer.symbol.system
 
-import org.mechdancer.algebra.function.vector.div
-import org.mechdancer.algebra.function.vector.euclid
-import org.mechdancer.algebra.function.vector.isZero
+import org.mechdancer.algebra.function.vector.*
 import org.mechdancer.algebra.implement.vector.Vector3D
+import org.mechdancer.algebra.implement.vector.to3D
+import org.mechdancer.geometry.transformation.toTransformationWithSVD
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.optimize.dampingNewton
 import org.mechdancer.symbol.optimize.optimize
 import java.util.*
+import kotlin.collections.component1
+import kotlin.collections.component2
 import kotlin.math.sqrt
 
 /** 测距仿真 */
 class SimulationWorld internal constructor(
-    beacons: Map<Beacon, Vector3D>,
+    private val beacons: Map<Beacon, Vector3D>,
     var temperature: Double,
     actualTemperature: Double,
     private val maxMeasureTime: Long,
@@ -48,6 +50,17 @@ class SimulationWorld internal constructor(
                     yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
             }
         }
+
+    fun transform(map: Map<Beacon, Vector3D>): List<Vector3D> {
+        val pairs = map.mapNotNull { (key, p) -> beacons[key]?.to(p) }.toMutableList()
+        val (a, b, c) = pairs
+        val (a0, a1) = a
+        val (b0, b1) = b
+        val (c0, c1) = c
+        pairs += (b0 - a0 cross c0 - a0) + a0 to (b1 - a1 cross c1 - a1) + a1
+        val tf = pairs.toTransformationWithSVD(1e-8)
+        return map.map { (_, p) -> (tf * p).to3D() }
+    }
 
     companion object {
         private val random = Random()

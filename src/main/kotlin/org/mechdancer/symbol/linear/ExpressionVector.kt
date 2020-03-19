@@ -40,5 +40,5 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
             }.let(::ExpressionVector)
 
     fun toVector(order: Iterable<Variable>) =
-        get(order).map { it!!.toDouble() }.toListVector()
+        order.map { expressions.getValue(it).toDouble() }.toListVector()
 }
