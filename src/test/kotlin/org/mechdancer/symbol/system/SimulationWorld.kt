@@ -21,45 +21,63 @@ import kotlin.math.sqrt
 
 /** 测距仿真 */
 class SimulationWorld internal constructor(
-    private val beacons: Map<Beacon, Vector3D>,
+    val layout: Map<Beacon, Vector3D>,
     var temperature: Double,
     actualTemperature: Double,
     private val maxMeasureTime: Long,
     private val sigmaMeasure: Double
 ) {
-    private val positions =
-        beacons.entries.map { (b, p) -> b.static() to p }
-
     var actualTemperature = actualTemperature
         set(value) {
             if (value == field) return
             field = value
-            edges = positions.buildEdges(value, maxMeasureTime)
+            edges = layout.toList().buildEdges(value, maxMeasureTime)
         }
 
     private var edges =
-        positions.buildEdges(actualTemperature, maxMeasureTime)
+        layout.toList().buildEdges(actualTemperature, maxMeasureTime)
 
-    fun edges() = edges.keys
+    fun grid() = edges.keys.map { (a, b) ->
+        listOf(layout.getValue(a), layout.getValue(b))
+    }
+
+    fun grid(map: Map<Beacon, Vector3D>) =
+        sequence {
+            val groups = map.keys.groupBy { it in layout }
+            val beacons = groups.getValue(true)
+            val mobiles = groups[false] ?: emptyList<Beacon>()
+            for ((a, b) in edges.keys)
+                if (a in beacons && b in beacons)
+                    yield(listOf(map.getValue(a), map.getValue(b)))
+            for (mobile in mobiles) for (beacon in beacons) {
+                val pm = map.getValue(mobile)
+                yield(listOf(pm, map.getValue(beacon)))
+            }
+        }.toList()
 
     fun preMeasures(): Map<Pair<Position, Position>, Double> {
         val c0 = soundVelocity(temperature)
-        return edges.mapValues { (_, t) -> t * c0 + gaussian(sigmaMeasure) }
+        return edges
+            .map { (pair, t) ->
+                val (a, b) = pair
+                a.static() to b.static() to t * c0 + gaussian(sigmaMeasure)
+            }
+            .toMap()
     }
 
     fun measure(mobile: Position, p: Vector3D) =
         sequence {
             val c0 = soundVelocity(temperature)
             val ca = soundVelocity(actualTemperature)
-            for ((beacon, p0) in positions) {
+            for ((beacon, p0) in layout.entries.map { (b, p) -> b.static() to p }) {
                 val t = (p euclid p0) / ca
                 if (t < maxMeasureTime / 1000.0)
                     yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
             }
         }
 
-    fun transform(map: Map<Beacon, Vector3D>): List<Vector3D> {
-        val pairs = map.mapNotNull { (key, p) -> beacons[key]?.to(p) }.toMutableList()
+    fun transform(map: Map<Beacon, Vector3D>): Map<Beacon, Vector3D> {
+        val pairs = map.mapNotNull { (key, p) -> layout[key]?.to(p) }.toMutableList()
         val tf = pairs.toTransformationWithSVD(1e-8).run {
             val (_, w, _) = matrix.cofactorOf(3, 3).svd()
             List(dim) { i -> w[i, i] }
@@ -78,7 +96,7 @@ class SimulationWorld internal constructor(
                 }
             ?: this
         }
-        return map.map { (_, p) -> (tf * p).to3D() }
+        return map.mapValues { (_, p) -> (tf * p).to3D() }
     }
 
     companion object {
@@ -118,7 +136,7 @@ class SimulationWorld internal constructor(
             return optimize(init, 200, 1e-9, f)[t]!!.toDouble()
         }
 
-        private fun List<Pair<Position, Vector3D>>.buildEdges(
+        private fun List<Pair<Beacon, Vector3D>>.buildEdges(
             t: Double,
             maxTime: Long
         ) =
