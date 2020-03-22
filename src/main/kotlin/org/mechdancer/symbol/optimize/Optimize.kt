@@ -1,6 +1,5 @@
 package org.mechdancer.symbol.optimize
 
-import org.mechdancer.algebra.implement.vector.listVectorOf
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.*
 import org.mechdancer.symbol.linear.NamedExpressionVector
@@ -22,17 +21,15 @@ fun newton(
     operator fun Expression.get(x: Double) =
         substitute(v, Constant(x)).toDouble()
 
-    val df = f.d() / v.d()
-    val ddf = df.d() / v.d()
+    val dv = Differential(v)
+    val df = f.d() / dv
 
-    val space = VariableSpace(listOf(v))
-    val ndf = df.toFunction(space)
-    val nddf = ddf.toFunction(space)
+    val ndf = df.toFunction(v)
+    val d2f = (df.d() / dv).toFunction(v)
 
     return { p ->
-        val s = listVectorOf(p)
-        val g = ndf(s)
-        val l = abs(g / nddf(s))
+        val g = ndf(p)
+        val l = abs(g / d2f(p))
         p - g.sign * l to l
     }
 }

@@ -56,9 +56,6 @@ sealed class Factor : FactorExpression {
     /** 代入构造函数 */
     protected abstract fun substituteMember(e: Expression): Expression
 
-    /** 函数成员转化为不具名形式 */
-    protected fun internal(space: VariableSpace) = member.toFunction(space)
-
     /** 对复合函数的成分加括号 */
     protected val parameterString get() = if (isBasic) "$member" else "($member)"
 
@@ -79,9 +76,11 @@ class Power private constructor(
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substituteMember(e: Expression) = get(e, exponent)
+    override fun toFunction(v: Variable): (Double) -> Double =
+        member.toFunction(v).let { { n -> it(n).pow(exponent.value) } }
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        internal(space).let { { v -> it(v).pow(exponent.value) } }
+        member.toFunction(space).let { { v -> it(v).pow(exponent.value) } }
 
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
@@ -131,8 +130,11 @@ class Exponential private constructor(
     override val df by lazy { this * ln(base) }
     override fun substituteMember(e: Expression) = get(base, e)
 
+    override fun toFunction(v: Variable): (Double) -> Double =
+        member.toFunction(v).let { { n -> base.value.pow(it(n)) } }
+
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        internal(space).let { { v -> base.value.pow(it(v)) } }
+        member.toFunction(space).let { { v -> base.value.pow(it(v)) } }
 
     override fun equals(other: Any?) =
         this === other || other is Exponential && base == other.base && member == other.member
@@ -170,8 +172,11 @@ class Ln private constructor(
     override val df by lazy { Power[member, `-1`] }
     override fun substituteMember(e: Expression) = get(e)
 
+    override fun toFunction(v: Variable): (Double) -> Double =
+        member.toFunction(v).let { { n -> kotlin.math.ln(it(n)) } }
+
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        internal(space).let { { v -> kotlin.math.ln(it(v)) } }
+        member.toFunction(space).let { { v -> kotlin.math.ln(it(v)) } }
 
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()

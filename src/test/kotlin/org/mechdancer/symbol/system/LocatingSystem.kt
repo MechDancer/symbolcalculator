@@ -98,7 +98,7 @@ class LocatingSystem(private val maxMeasure: Double) {
                 targets.associate { b -> b.beacon to p.toVector(b.space).to3D() }.let(painter)
             }
             .take(1000)
-            .firstOrLast { (_, step) -> step < 5e-4 }
+            .firstOrLast { (_, step) -> step < 1e-3 }
             .first
         return targets.associateWith { p ->
             result.toVector(p.space).to3D().also { positions[p] = it }
@@ -136,7 +136,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         // 构造优化步骤函数
         val f = dampingNewton(errors.sum(), variables(init.expressions.keys), *domains)
-        val result = optimize(init, 500, 5e-6, f)
+        val result = optimize(init, 100, 5e-6, f)
         positions[p] = result.toVector(p.space).to3D()
     }
 

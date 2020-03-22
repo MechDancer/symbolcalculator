@@ -13,6 +13,9 @@ interface Expression : ExpressionStruct<Double> {
     /** 将尽量用 [map] 中的键用值代换 */
     fun substitute(map: Map<out FunctionExpression, Expression>): Expression
 
+    /** 指定结构关于变量 [v]，构造带入运算闭包 */
+    fun toFunction(v: Variable): (Double) -> Double
+
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
 

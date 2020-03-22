@@ -19,6 +19,7 @@ inline class Differential(val variable: Variable)
         ?: map[variable]?.d()
         ?: this
 
+    override fun toFunction(v: Variable) = { _: Double -> .0 }
     override fun toFunction(space: VariableSpace) = { _: Vector -> .0 }
     override fun toString() = "d$variable"
 }

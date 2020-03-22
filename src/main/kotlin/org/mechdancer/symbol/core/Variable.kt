@@ -18,6 +18,9 @@ inline class Variable(val name: String)
     override fun substitute(map: Map<out FunctionExpression, Expression>) =
         map[this] ?: this
 
+    override fun toFunction(v: Variable): (Double) -> Double =
+        if (v == this) { n: Double -> n } else throw UnsupportedOperationException()
+
     override fun toFunction(space: VariableSpace) =
         space.variables.indexOf(this).let { { v: Vector -> v[it] } }
 

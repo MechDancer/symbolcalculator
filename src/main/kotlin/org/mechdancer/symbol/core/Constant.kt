@@ -12,6 +12,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     override fun d() = `0`
     override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
     override fun substitute(map: Map<out FunctionExpression, Expression>) = this
+    override fun toFunction(v: Variable) = { _: Double -> value }
     override fun toFunction(space: VariableSpace) = { _: Vector -> value }
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString() = formatter.format(value)!!
