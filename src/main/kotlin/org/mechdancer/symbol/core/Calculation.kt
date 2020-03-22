@@ -50,6 +50,9 @@ class Sum private constructor(
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
 
+    override fun substitute(map: Map<out FunctionExpression, Expression>) =
+        map[this] ?: get(products.map { it.substitute(map) }) + tail
+
     override fun toFunction(space: VariableSpace): (Vector) -> Double {
         val list = products.map { it.toFunction(space) }
         return if (list.size > parallelism)
@@ -158,6 +161,9 @@ class Product private constructor(
 
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(factors.map { it.substitute(from, to) }) * times
+
+    override fun substitute(map: Map<out FunctionExpression, Expression>) =
+        map[this] ?: get(factors.map { it.substitute(map) }) * times
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double {
         val list = factors.map { it.toFunction(space) }

@@ -36,15 +36,25 @@ sealed class Factor : FactorExpression {
     final override fun substitute(from: Expression, to: Expression) =
         when (from) {
             this   -> to
-            member -> substitute(to)
-            else   -> substitute(member.substitute(from, to))
+            member -> substituteMember(to)
+            else   -> substituteMember(member.substitute(from, to))
         }
+
+    /**
+     * 复合函数的多重带入法则
+     *
+     * 检查函数的形式，基本初等函数直接代入，否则展开代入
+     */
+    final override fun substitute(map: Map<out FunctionExpression, Expression>) =
+        map[this]
+        ?: map[member]?.let(this::substituteMember)
+        ?: substituteMember(member.substitute(map))
 
     /** 对链式法则展开一层 */
     protected abstract val df: Expression
 
     /** 代入构造函数 */
-    protected abstract fun substitute(e: Expression): Expression
+    protected abstract fun substituteMember(e: Expression): Expression
 
     /** 函数成员转化为不具名形式 */
     protected fun internal(space: VariableSpace) = member.toFunction(space)
@@ -68,7 +78,7 @@ class Power private constructor(
     }
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
-    override fun substitute(e: Expression) = get(e, exponent)
+    override fun substituteMember(e: Expression) = get(e, exponent)
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
         internal(space).let { { v -> it(v).pow(exponent.value) } }
@@ -119,7 +129,7 @@ class Exponential private constructor(
     BaseExpression,
     ExponentialExpression {
     override val df by lazy { this * ln(base) }
-    override fun substitute(e: Expression) = get(base, e)
+    override fun substituteMember(e: Expression) = get(base, e)
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
         internal(space).let { { v -> base.value.pow(it(v)) } }
@@ -158,7 +168,7 @@ class Ln private constructor(
     BaseExpression,
     LnExpression {
     override val df by lazy { Power[member, `-1`] }
-    override fun substitute(e: Expression) = get(e)
+    override fun substituteMember(e: Expression) = get(e)
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
         internal(space).let { { v -> kotlin.math.ln(it(v)) } }

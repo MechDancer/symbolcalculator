@@ -26,4 +26,4 @@ fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
 
 fun Expression.substitute(expressionVector: NamedExpressionVector) =
-    expressionVector.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }
+    substitute(expressionVector.expressions)

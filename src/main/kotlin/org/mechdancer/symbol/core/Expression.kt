@@ -10,6 +10,9 @@ interface Expression : ExpressionStruct<Double> {
     /** 将 [from] 用 [to] 代换 */
     fun substitute(from: Expression, to: Expression): Expression
 
+    /** 将尽量用 [map] 中的键用值代换 */
+    fun substitute(map: Map<out FunctionExpression, Expression>): Expression
+
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
 

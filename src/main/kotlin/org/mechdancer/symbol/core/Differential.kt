@@ -14,6 +14,11 @@ inline class Differential(val variable: Variable)
             else     -> this
         }
 
+    override fun substitute(map: Map<out FunctionExpression, Expression>) =
+        map[this]
+        ?: map[variable]?.d()
+        ?: this
+
     override fun toFunction(space: VariableSpace) = { _: Vector -> .0 }
     override fun toString() = "d$variable"
 }

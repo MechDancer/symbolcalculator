@@ -15,6 +15,9 @@ inline class Variable(val name: String)
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else this
 
+    override fun substitute(map: Map<out FunctionExpression, Expression>) =
+        map[this] ?: this
+
     override fun toFunction(space: VariableSpace) =
         space.variables.indexOf(this).let { { v: Vector -> v[it] } }
 
