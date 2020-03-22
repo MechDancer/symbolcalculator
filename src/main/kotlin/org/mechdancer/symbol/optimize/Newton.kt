@@ -60,6 +60,6 @@ fun dampingNewton(
         val h = hessian(v).inverse() * g
         // 确定最优下降方向
         val dp = if (g dot h < 0) g else h
-        domains.fastestOf(error, p, space.order(dp), Domain::mapExp)
+        domains.fastestOf(error, p, space.order(dp), Domain::mapLinear)
     }
 }

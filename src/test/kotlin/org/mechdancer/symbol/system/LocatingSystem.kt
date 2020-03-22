@@ -91,14 +91,14 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         val space = variables(init.expressions.keys)
         // 构造优化步骤函数
-        val f = fastestBatchGD(errors.sum(), space, *domain)
+        val f = dampingNewton(errors.sum(), space, *domain)
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
                 targets.associate { b -> b.beacon to p.toVector(b.space).to3D() }.let(painter)
             }
-            .take(1000)
-            .firstOrLast { (_, step) -> step < 1e-3 }
+            .take(2000)
+            .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         return targets.associateWith { p ->
             result.toVector(p.space).to3D().also { positions[p] = it }
