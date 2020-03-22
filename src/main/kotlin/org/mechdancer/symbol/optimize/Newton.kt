@@ -7,8 +7,8 @@ import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.function.vector.times
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.VariableSpace
-import org.mechdancer.symbol.linear.Hamiltonian
-import org.mechdancer.symbol.linear.HessianMatrix
+import org.mechdancer.symbol.linear.Hamiltonian.Companion.gradient
+import org.mechdancer.symbol.linear.Hessian.Companion.hessian
 import org.mechdancer.symbol.linear.NamedExpressionVector
 
 /**
@@ -23,8 +23,8 @@ fun newton(
     space: VariableSpace
 ): OptimizeStep<NamedExpressionVector> {
     val df = error.d()
-    val gradient = Hamiltonian.gradient(df, space).toFunction(space)
-    val hessian = HessianMatrix.hessian(df.d(), space).toFunction(space)
+    val gradient = gradient(df, space).toFunction(space)
+    val hessian = hessian(df.d(), space).toFunction(space)
     return { p ->
         val v = p.toVector(space)
         val g = gradient(v)
@@ -52,8 +52,8 @@ fun dampingNewton(
 ): OptimizeStep<NamedExpressionVector> {
     // 微分
     val df = error.d()
-    val gradient = Hamiltonian.gradient(df, space).toFunction(space)
-    val hessian = HessianMatrix.hessian(df.d(), space).toFunction(space)
+    val gradient = gradient(df, space).toFunction(space)
+    val hessian = hessian(df.d(), space).toFunction(space)
     return { p ->
         val v = p.toVector(space)
         val g = gradient(v)

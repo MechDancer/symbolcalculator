@@ -11,10 +11,8 @@ inline class Hamiltonian(private val space: VariableSpace) {
     operator fun times(f: Expression) =
         gradient(f.d(), space)
 
-    internal companion object {
+    companion object {
         fun gradient(df: Expression, space: VariableSpace) =
-            NamedExpressionVector(space.variables.associateWith {
-                df / Differential(it)
-            })
+            ExpressionVector(space.variables.map { df / Differential(it) })
     }
 }

@@ -34,7 +34,7 @@ fun main() = simulate {
     trace {
         val steps = 400
         val l = vector2D(1, 1) * radius * cos(PI / edgeCount)
-        for (i in 0 until steps) {
+        for (i in 0..steps) {
             val k = 1 - i.toDouble() / steps
             val (x, y) = (4 * PI * k).toRad().toVector() * l * k
             yield(vector3D(x, y, -1.5))

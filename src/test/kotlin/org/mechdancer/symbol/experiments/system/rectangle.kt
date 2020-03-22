@@ -10,7 +10,7 @@ import kotlin.math.sqrt
 
 fun main() = simulate {
     world {
-        sigmaMeasure = .1
+        sigmaMeasure = .0
         sigmaDeploy = vector3D(1, 1, 1) * .2
     }
     maxMeasure = 30.0
@@ -24,6 +24,6 @@ fun main() = simulate {
     trace {
         val steps = 200
         val dl = vector3D(2, 1, 0) * shape / steps
-        for (i in 0 until steps) yield(dl * i - vector3D(0, 0, 1.5))
+        for (i in 0..steps) yield(dl * i - vector3D(0, 0, 1.5))
     }
 }

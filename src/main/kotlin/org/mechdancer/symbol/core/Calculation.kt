@@ -52,14 +52,16 @@ class Sum private constructor(
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double {
         val list = products.map { it.toFunction(space) }
-        return { v ->
-            if (list.size > parallelism)
+        return if (list.size > parallelism)
+            { v ->
                 list.parallelStream()
                     .mapToDouble { it(v) }
                     .sum() + tail.value
-            else
+            }
+        else
+            { v ->
                 list.sumByDouble { it(v) } + tail.value
-        }
+            }
     }
 
     override fun equals(other: Any?) =
@@ -159,14 +161,16 @@ class Product private constructor(
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double {
         val list = factors.map { it.toFunction(space) }
-        return { v ->
-            if (list.size > parallelism)
+        return if (list.size > parallelism)
+            { v ->
                 list.parallelStream()
                     .mapToDouble { it(v) }
                     .reduce(times.value) { product, it -> product * it }
-            else
+            }
+        else
+            { v ->
                 list.fold(times.value) { product, it -> product * it(v) }
-        }
+            }
     }
 
     override fun equals(other: Any?) =

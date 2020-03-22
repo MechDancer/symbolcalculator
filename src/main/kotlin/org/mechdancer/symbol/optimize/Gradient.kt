@@ -4,7 +4,7 @@ import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.VariableSpace
-import org.mechdancer.symbol.linear.Hamiltonian
+import org.mechdancer.symbol.linear.Hamiltonian.Companion.gradient
 import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.toDouble
 
@@ -22,7 +22,7 @@ fun batchGD(
     vararg domains: Domain,
     alpha: (Double) -> Double
 ): OptimizeStep<NamedExpressionVector> {
-    val gradient = Hamiltonian.gradient(error.d(), space).toFunction(space)
+    val gradient = gradient(error.d(), space).toFunction(space)
     return { p ->
         val v = p.toVector(space)
         val limit = domains.mapNotNull { it.mapExp(p) }
@@ -50,7 +50,7 @@ fun fastestBatchGD(
     space: VariableSpace,
     vararg domains: Domain
 ): OptimizeStep<NamedExpressionVector> {
-    val gradient = Hamiltonian.gradient(error.d(), space).toFunction(space)
+    val gradient = gradient(error.d(), space).toFunction(space)
     return { p ->
         val dp = space.order(gradient(p.toVector(space)))
         domains.fastestOf(error, p, dp, Domain::mapLinear)

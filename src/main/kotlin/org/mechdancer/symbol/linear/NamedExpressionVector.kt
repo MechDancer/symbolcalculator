@@ -43,14 +43,4 @@ inline class NamedExpressionVector(val expressions: Map<Variable, Expression>) {
 
     fun toVector(space: VariableSpace): Vector =
         space.variables.map { expressions[it]?.toDouble() ?: .0 }.toListVector()
-
-    fun toFunction(space: VariableSpace): (Vector) -> Vector {
-        val list = space.variables.map { expressions[it]?.toFunction(space) ?: { .0 } }
-        return { v ->
-            if (dim >= 6)
-                list.parallelStream().mapToDouble { it(v) }.toList().toListVector()
-            else
-                list.map { it(v) }.toListVector()
-        }
-    }
 }
