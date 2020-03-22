@@ -3,8 +3,8 @@ package org.mechdancer.symbol.system
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.linear.ExpressionVector
-import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.core.VariableSpace
+import org.mechdancer.symbol.linear.NamedExpressionVector
 
 /**
  * 每个定位点对应标签的一次有意义的移动
@@ -25,10 +25,10 @@ data class Position(
     fun isStatic() = time < 0
 
     fun toExpressionVector() =
-        ExpressionVector(prefix.zip(variables).toMap())
+        NamedExpressionVector(prefix.zip(variables).toMap())
 
     fun toExpressionVector(value: Vector3D) =
-        ExpressionVector(variables.zip(value.toList().map(::Constant)).toMap())
+        NamedExpressionVector(variables.zip(value.toList().map(::Constant)).toMap())
 
     override fun compareTo(other: Position) =
         beacon.compareTo(other.beacon)

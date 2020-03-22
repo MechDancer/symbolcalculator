@@ -4,7 +4,7 @@ import org.mechdancer.symbol.`^`
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Constant.Companion.e
 import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.minus
 import org.mechdancer.symbol.plus
 
@@ -19,7 +19,7 @@ data class Domain(val v: Variable, val min: Constant, val max: Constant) {
     }
 
     /** 代入表达式向量，若变量不在目标区域则产生一个线性损失项 */
-    fun mapLinear(p: ExpressionVector) =
+    fun mapLinear(p: NamedExpressionVector) =
         (p[v] as? Constant)?.let {
             when {
                 it < min -> Triple(v, v * (it - min), it - min)
@@ -29,7 +29,7 @@ data class Domain(val v: Variable, val min: Constant, val max: Constant) {
         }
 
     /** 代入表达式向量，若变量不在目标区域则产生一个指数损失项 */
-    fun mapExp(p: ExpressionVector) =
+    fun mapExp(p: NamedExpressionVector) =
         (p[v] as? Constant)?.let {
             when {
                 it < min -> Triple(v, function, it - min)

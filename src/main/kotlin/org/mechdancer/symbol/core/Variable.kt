@@ -15,8 +15,8 @@ inline class Variable(val name: String)
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else this
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double =
-        order.indexOf(this).let { i -> { it[i] } }
+    override fun toFunction(space: VariableSpace) =
+        space.variables.indexOf(this).let { { v: Vector -> v[it] } }
 
     override fun compareTo(other: Variable) =
         name.compareTo(other.name)

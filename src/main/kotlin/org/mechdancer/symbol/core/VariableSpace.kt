@@ -1,8 +1,9 @@
-package org.mechdancer.symbol.linear
+package org.mechdancer.symbol.core
 
 import org.mechdancer.algebra.core.Vector
-import org.mechdancer.symbol.core.Constant
-import org.mechdancer.symbol.core.Variable
+import org.mechdancer.symbol.linear.Hamiltonian
+import org.mechdancer.symbol.linear.Hessian
+import org.mechdancer.symbol.linear.NamedExpressionVector
 
 /** 变量空间 */
 inline class VariableSpace(val variables: List<Variable>) {
@@ -10,7 +11,7 @@ inline class VariableSpace(val variables: List<Variable>) {
     val dim get() = variables.size
 
     /** 此空间上的平凡场 */
-    val ordinaryField get() = ExpressionVector(variables.associateWith { it })
+    val ordinaryField get() = NamedExpressionVector(variables.associateWith { it })
 
     /** 此空间上的哈密顿算子 */
     val hamiltonian get() = Hamiltonian(this)
@@ -23,7 +24,7 @@ inline class VariableSpace(val variables: List<Variable>) {
         variables
             .mapIndexed { i, v -> v to Constant(vector[i]) }
             .toMap()
-            .let(::ExpressionVector)
+            .let(::NamedExpressionVector)
 
     /** 求变量空间的交空间 */
     operator fun times(others: VariableSpace) =

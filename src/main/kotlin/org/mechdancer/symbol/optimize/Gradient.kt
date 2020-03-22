@@ -3,9 +3,9 @@ package org.mechdancer.symbol.optimize
 import org.mechdancer.algebra.function.vector.plus
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.core.VariableSpace
 import org.mechdancer.symbol.linear.Hamiltonian
-import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.toDouble
 
 /**
@@ -21,8 +21,8 @@ fun batchGD(
     space: VariableSpace,
     vararg domains: Domain,
     alpha: (Double) -> Double
-): OptimizeStep<ExpressionVector> {
-    val gradient = Hamiltonian.dfToGrad(error.d(), space).toFunction(space)
+): OptimizeStep<NamedExpressionVector> {
+    val gradient = Hamiltonian.gradient(error.d(), space).toFunction(space)
     return { p ->
         val v = p.toVector(space)
         val limit = domains.mapNotNull { it.mapExp(p) }
@@ -49,8 +49,8 @@ fun fastestBatchGD(
     error: Expression,
     space: VariableSpace,
     vararg domains: Domain
-): OptimizeStep<ExpressionVector> {
-    val gradient = Hamiltonian.dfToGrad(error.d(), space).toFunction(space)
+): OptimizeStep<NamedExpressionVector> {
+    val gradient = Hamiltonian.gradient(error.d(), space).toFunction(space)
     return { p ->
         val dp = space.order(gradient(p.toVector(space)))
         domains.fastestOf(error, p, dp, Domain::mapLinear)
@@ -66,8 +66,8 @@ fun fastestBatchGD(
  */
 inline fun stochasticGD(
     errors: List<Expression>,
-    block: (error: Expression) -> OptimizeStep<ExpressionVector>
-): OptimizeStep<ExpressionVector> {
+    block: (error: Expression) -> OptimizeStep<NamedExpressionVector>
+): OptimizeStep<NamedExpressionVector> {
     val dim = errors.size
     // 样本步骤函数
     val steps = errors.map(block)

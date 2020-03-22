@@ -1,7 +1,7 @@
 package org.mechdancer.symbol.util
 
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.core.Tex
+import org.mechdancer.symbol.core.TeX
 import java.io.File
 import kotlin.math.abs
 
@@ -48,7 +48,7 @@ object TexRender {
         return new
     }
 
-    private fun template(tex: Tex): Tex = """
+    private fun template(tex: TeX): TeX = """
         \documentclass[preview]{standalone}
 
         \usepackage[english]{babel}

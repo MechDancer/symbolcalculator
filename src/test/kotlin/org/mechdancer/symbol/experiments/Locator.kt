@@ -11,10 +11,10 @@ import org.mechdancer.symbol.core.Constant.Companion.zero
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
+import org.mechdancer.symbol.core.VariableSpace.Companion.xyz
 import org.mechdancer.symbol.experiments.Locator.State.Preparing
 import org.mechdancer.symbol.experiments.Locator.State.Working
-import org.mechdancer.symbol.linear.ExpressionVector
-import org.mechdancer.symbol.linear.VariableSpace.Companion.xyz
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.optimize.dampingNewton
 import org.mechdancer.symbol.optimize.get
 import org.mechdancer.symbol.optimize.optimize
@@ -60,7 +60,7 @@ class Locator(beacons: List<Vector3D>) {
 
     private companion object {
         private val z = Variable("z")
-        private operator fun Expression.get(values: ExpressionVector) =
+        private operator fun Expression.get(values: NamedExpressionVector) =
             substitute(values).toDouble()
     }
 }

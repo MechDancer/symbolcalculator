@@ -47,7 +47,7 @@ sealed class Factor : FactorExpression {
     protected abstract fun substitute(e: Expression): Expression
 
     /** 函数成员转化为不具名形式 */
-    protected fun internal(order: List<Variable>) = member.toFunction(order)
+    protected fun internal(space: VariableSpace) = member.toFunction(space)
 
     /** 对复合函数的成分加括号 */
     protected val parameterString get() = if (isBasic) "$member" else "($member)"
@@ -70,15 +70,15 @@ class Power private constructor(
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substitute(e: Expression) = get(e, exponent)
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double =
-        internal(order).let { { v -> it(v).pow(exponent.value) } }
+    override fun toFunction(space: VariableSpace): (Vector) -> Double =
+        internal(space).let { { v -> it(v).pow(exponent.value) } }
 
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
 
     override fun hashCode() = member.hashCode() xor exponent.hashCode()
     override fun toString() = "$parameterString^$exponent"
-    override fun toTex(): Tex =
+    override fun toTex(): TeX =
         when (exponent) {
             Constant(.5)  -> "\\sqrt{${member.toTex()}}"
             Constant(-.5) -> "\\frac{1}{\\sqrt{${member.toTex()}}}"
@@ -121,15 +121,15 @@ class Exponential private constructor(
     override val df by lazy { this * ln(base) }
     override fun substitute(e: Expression) = get(base, e)
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double =
-        internal(order).let { { v -> base.value.pow(it(v)) } }
+    override fun toFunction(space: VariableSpace): (Vector) -> Double =
+        internal(space).let { { v -> base.value.pow(it(v)) } }
 
     override fun equals(other: Any?) =
         this === other || other is Exponential && base == other.base && member == other.member
 
     override fun hashCode() = base.hashCode() xor member.hashCode()
     override fun toString() = "$base^$parameterString"
-    override fun toTex(): Tex = "{${base.toTex()}}^{${member.toTex()}}"
+    override fun toTex(): TeX = "{${base.toTex()}}^{${member.toTex()}}"
 
     companion object Builder {
         operator fun get(b: Constant, e: Expression): Expression =
@@ -160,13 +160,13 @@ class Ln private constructor(
     override val df by lazy { Power[member, `-1`] }
     override fun substitute(e: Expression) = get(e)
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double =
-        internal(order).let { { v -> kotlin.math.ln(it(v)) } }
+    override fun toFunction(space: VariableSpace): (Vector) -> Double =
+        internal(space).let { { v -> kotlin.math.ln(it(v)) } }
 
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()
     override fun toString() = "ln$parameterString"
-    override fun toTex(): Tex = "\\ln $parameterTex"
+    override fun toTex(): TeX = "\\ln $parameterTex"
 
     companion object Builder {
         private fun simplify(f: FactorExpression) =

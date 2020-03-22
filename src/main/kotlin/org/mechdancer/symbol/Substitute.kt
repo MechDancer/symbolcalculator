@@ -2,7 +2,7 @@ package org.mechdancer.symbol
 
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.NamedExpressionVector
 
 // 代入
 
@@ -25,5 +25,5 @@ fun Expression.substitute(e: Expression, n: Number) =
 fun Expression.substitute(block: ValueCalculator.() -> Unit) =
     ValueCalculator(this).apply(block).expression
 
-fun Expression.substitute(expressionVector: ExpressionVector) =
+fun Expression.substitute(expressionVector: NamedExpressionVector) =
     expressionVector.expressions.entries.fold(this) { r, (v, e) -> r.substitute(v, e) }

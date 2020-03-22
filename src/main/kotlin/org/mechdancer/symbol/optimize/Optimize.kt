@@ -2,11 +2,8 @@ package org.mechdancer.symbol.optimize
 
 import org.mechdancer.algebra.implement.vector.listVectorOf
 import org.mechdancer.symbol.*
-import org.mechdancer.symbol.core.Constant
-import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.core.Sum
-import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.core.*
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -28,8 +25,9 @@ fun newton(
     val df = f.d() / v.d()
     val ddf = df.d() / v.d()
 
-    val ndf = df.toFunction(listOf(v))
-    val nddf = ddf.toFunction(listOf(v))
+    val space = VariableSpace(listOf(v))
+    val ndf = df.toFunction(space)
+    val nddf = ddf.toFunction(space)
 
     return { p ->
         val s = listVectorOf(p)
@@ -42,9 +40,9 @@ fun newton(
 /** 使用牛顿法确定最优下降率 */
 internal fun fastestWithNewton(
     e: Expression,
-    p: ExpressionVector,
-    dp: ExpressionVector
-): Pair<ExpressionVector, Double> {
+    p: NamedExpressionVector,
+    dp: NamedExpressionVector
+): Pair<NamedExpressionVector, Double> {
     val l by variable
     val next = p - dp.map { it * l }
     val a = optimize(1.0, 20, 1e-9, newton(e.substitute(next), l))
@@ -54,14 +52,14 @@ internal fun fastestWithNewton(
 /** 映射不等式约束并用牛顿法最速下降 */
 internal inline fun Array<out Domain>.fastestOf(
     e: Expression,
-    p: ExpressionVector,
-    dp: ExpressionVector,
-    which: Domain.(ExpressionVector) -> Triple<Variable, Expression, Constant>?
-): Pair<ExpressionVector, Double> {
+    p: NamedExpressionVector,
+    dp: NamedExpressionVector,
+    which: Domain.(NamedExpressionVector) -> Triple<Variable, Expression, Constant>?
+): Pair<NamedExpressionVector, Double> {
     val limit = mapNotNull { it.which(p) }
     return if (limit.isNotEmpty()) {
         val en = Sum[limit.map { (_, e, _) -> e } + e]
-        val dn = limit.associate { (v, _, d) -> v to d }.let(::ExpressionVector)
+        val dn = limit.associate { (v, _, d) -> v to d }.let(::NamedExpressionVector)
         fastestWithNewton(en, p, dp + dn)
     } else
         fastestWithNewton(e, p, dp)

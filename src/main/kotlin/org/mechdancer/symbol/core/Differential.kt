@@ -14,6 +14,6 @@ inline class Differential(val variable: Variable)
             else     -> this
         }
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double = { .0 }
+    override fun toFunction(space: VariableSpace) = { _: Vector -> .0 }
     override fun toString() = "d$variable"
 }

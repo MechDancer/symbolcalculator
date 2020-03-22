@@ -50,9 +50,16 @@ class Sum private constructor(
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double {
-        val list = products.map { it.toFunction(order) }
-        return { v -> list.sumByDouble { it(v) } + tail.value }
+    override fun toFunction(space: VariableSpace): (Vector) -> Double {
+        val list = products.map { it.toFunction(space) }
+        return { v ->
+            if (list.size > parallelism)
+                list.parallelStream()
+                    .mapToDouble { it(v) }
+                    .sum() + tail.value
+            else
+                list.sumByDouble { it(v) } + tail.value
+        }
     }
 
     override fun equals(other: Any?) =
@@ -150,9 +157,16 @@ class Product private constructor(
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(factors.map { it.substitute(from, to) }) * times
 
-    override fun toFunction(order: List<Variable>): (Vector) -> Double {
-        val list = factors.map { it.toFunction(order) }
-        return { v -> list.fold(times.value) { product, it -> product * it(v) } }
+    override fun toFunction(space: VariableSpace): (Vector) -> Double {
+        val list = factors.map { it.toFunction(space) }
+        return { v ->
+            if (list.size > parallelism)
+                list.parallelStream()
+                    .mapToDouble { it(v) }
+                    .reduce(times.value) { product, it -> product * it }
+            else
+                list.fold(times.value) { product, it -> product * it(v) }
+        }
     }
 
     override fun equals(other: Any?) =

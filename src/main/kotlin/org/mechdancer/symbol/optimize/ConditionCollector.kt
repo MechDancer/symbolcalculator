@@ -8,7 +8,7 @@ import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.FunctionExpression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.div
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.minus
 
 /**
@@ -54,5 +54,5 @@ class ConditionCollector {
     fun build() =
         Triple(equations.run { map { (it `^` 2) / (2 * size) } },
                domains.toTypedArray(),
-               initValues.let(::ExpressionVector))
+               initValues.let(::NamedExpressionVector))
 }

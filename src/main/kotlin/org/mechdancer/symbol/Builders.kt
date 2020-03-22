@@ -4,8 +4,8 @@ import org.mechdancer.algebra.implement.vector.Vector2D
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
-import org.mechdancer.symbol.linear.ExpressionVector
-import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.core.VariableSpace
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import java.util.*
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
@@ -29,7 +29,7 @@ fun variable(collector: MutableSet<Variable>) =
     VariableProperty(collector)
 
 fun point(vararg pairs: Pair<Variable, Number>) =
-    ExpressionVector(pairs.associate { (v, x) -> v to Constant(x.toDouble()) })
+    NamedExpressionVector(pairs.associate { (v, x) -> v to Constant(x.toDouble()) })
 
 // 变量收集器
 
@@ -41,26 +41,26 @@ fun Vector2D.toExpression(
     vx: Variable = Variable("x"),
     vy: Variable = Variable("y")
 ) =
-    ExpressionVector(mapOf(vx to Constant(x),
-                           vy to Constant(y)))
+    NamedExpressionVector(mapOf(vx to Constant(x),
+                                vy to Constant(y)))
 
 fun Vector3D.toExpression(
     vx: Variable = Variable("x"),
     vy: Variable = Variable("y"),
     vz: Variable = Variable("z")
 ) =
-    ExpressionVector(mapOf(vx to Constant(x),
-                           vy to Constant(y),
-                           vz to Constant(z)))
+    NamedExpressionVector(mapOf(vx to Constant(x),
+                                vy to Constant(y),
+                                vz to Constant(z)))
 
-fun ExpressionVector.toVector2D(
+fun NamedExpressionVector.toVector2D(
     x: Variable = Variable("x"),
     y: Variable = Variable("y")
 ) =
     Vector2D(expressions.getValue(x).toDouble(),
              expressions.getValue(y).toDouble())
 
-fun ExpressionVector.toVector3D(
+fun NamedExpressionVector.toVector3D(
     x: Variable = Variable("x"),
     y: Variable = Variable("y"),
     z: Variable = Variable("z")

@@ -6,7 +6,7 @@ import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.linear.VariableSpace.Companion.variables
+import org.mechdancer.symbol.core.VariableSpace.Companion.variables
 import org.mechdancer.symbol.optimize.*
 import java.util.*
 import kotlin.collections.component1
@@ -136,7 +136,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         // 构造优化步骤函数
         val f = dampingNewton(errors.sum(), variables(init.expressions.keys), *domains)
-        val result = optimize(init, 20, 1e-4, f)
+        val result = optimize(init, 500, 5e-6, f)
         positions[p] = result.toVector(p.space).to3D()
     }
 

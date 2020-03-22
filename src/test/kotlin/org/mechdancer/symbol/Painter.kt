@@ -9,7 +9,7 @@ import org.mechdancer.remote.resources.MulticastSockets
 import org.mechdancer.remote.resources.Name
 import org.mechdancer.remote.resources.Networks
 import org.mechdancer.symbol.core.Constant
-import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.NamedExpressionVector
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 
@@ -122,7 +122,7 @@ fun RemoteHub.paintFrame3(
 /**
  * 场画成一维信号的集合
  */
-fun RemoteHub.paint(expressionVector: ExpressionVector) {
+fun RemoteHub.paint(expressionVector: NamedExpressionVector) {
     for ((v, e) in expressionVector.expressions)
         if (e is Constant)
             paint(v.toString(), e.value)
