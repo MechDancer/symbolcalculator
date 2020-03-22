@@ -10,6 +10,7 @@ import org.mechdancer.symbol.paintFrame3
 import org.mechdancer.symbol.system.Beacon
 import org.mechdancer.symbol.system.LocatingSystem
 import org.mechdancer.symbol.system.WorldBuilderDsl
+import java.text.DecimalFormat
 import kotlin.math.abs
 import kotlin.system.measureTimeMillis
 
@@ -49,18 +50,22 @@ class SimulationDsl private constructor() {
                 }
 
                 println("optimize in ${measureTimeMillis { system.optimize() }}ms")
-
+                val format = DecimalFormat("0.###")
                 for ((i, m) in trace.withIndex()) {
-                    val result = System.currentTimeMillis().let { time ->
-                        system[time] = world.measure(mobile.move(time), m).toMap()
-                        system[mobile].let(world::transform).getValue(mobile).run { copy(z = -abs(z)) }
-                    }
+                    val time = System.currentTimeMillis()
+                    system[time] = world.measure(mobile.move(time), m).toMap()
+                    val result = system[mobile].let(world::transform).getValue(mobile).run { copy(z = -abs(z)) }
+                    buildString {
+                        append("step $i: ")
+                        append("${System.currentTimeMillis() - time}ms\t")
+                        append("${format.format(m euclid result)}\t")
+                        append("${format.format(m.select(0..1) euclid result.select(0..1))}\t")
+                    }.also(::println)
                     with(remote) {
                         paintFrame3("实际地图", world.grid())
                         paint("目标", m)
                         paint("历史", result)
                     }
-                    println("step $i: ${m euclid result}\t${m.select(0..1) euclid result.select(0..1)}")
                 }
             }
     }

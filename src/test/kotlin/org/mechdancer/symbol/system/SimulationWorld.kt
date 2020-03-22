@@ -89,8 +89,7 @@ class SimulationWorld internal constructor(
                     val (a1, a0) = a
                     val (b1, b0) = b
                     val (c1, c0) = c
-                    val new = baseMatrixOf(b1 - a1, c1 - a1) *
-                              (baseMatrixOf(b0 - a0, c0 - a0).inverse() * it)
+                    val new = baseMatrixOf(b1 - a1, c1 - a1) * (baseMatrixOf(b0 - a0, c0 - a0).inverse() * it)
                     pairs += (new + a1).to3D() to (it + a0).to3D()
                     pairs.toTransformationWithSVD(1e-8)
                 }

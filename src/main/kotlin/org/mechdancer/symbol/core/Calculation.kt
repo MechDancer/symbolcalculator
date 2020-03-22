@@ -13,16 +13,16 @@ sealed class Calculation : FunctionExpression {
 
     final override fun times(c: Constant) =
         when (c) {
-            zero -> zero
-            one  -> this
-            else -> timesWithoutCheck(c)
+            zero, -zero -> zero
+            one         -> this
+            else        -> timesWithoutCheck(c)
         }
 
     final override fun div(c: Constant) =
         when (c) {
-            zero -> Constant.NaN
-            one  -> this
-            else -> divWithoutCheck(c)
+            zero, -zero -> Constant.NaN
+            one         -> this
+            else        -> divWithoutCheck(c)
         }
 
     final override fun toString() = format(Expression::toString)

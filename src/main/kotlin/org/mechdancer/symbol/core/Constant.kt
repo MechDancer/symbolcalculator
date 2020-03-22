@@ -32,6 +32,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
         val NaN = Constant(Double.NaN)
 
         val zero = Constant(.0)
+        val nZero = Constant(-.0)
         val one = Constant(1.0)
         val pi = Constant(PI)
 

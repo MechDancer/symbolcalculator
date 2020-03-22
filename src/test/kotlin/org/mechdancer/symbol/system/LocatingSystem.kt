@@ -13,6 +13,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 import kotlin.random.Random.Default.nextDouble
+import kotlin.system.measureTimeMillis
 
 class LocatingSystem(private val maxMeasure: Double) {
     var painter: (Map<Beacon, Vector3D>) -> Unit = {}
@@ -28,8 +29,8 @@ class LocatingSystem(private val maxMeasure: Double) {
 
     operator fun set(a: Position, b: Position, t: Long, d: Double) {
         require(a != b)
-        positions.update(a) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
-        positions.update(b) { Vector3D(nextDouble(), nextDouble(), nextDouble()) }
+        positions.update(a) { Vector3D(nextDouble(), nextDouble(), nextDouble()) * 1e-4 }
+        positions.update(b) { Vector3D(nextDouble(), nextDouble(), nextDouble()) * 1e-4 }
         relations.update(a, { it += b }, { sortedSetOf(a, b) })
         relations.update(b, { it += a }, { sortedSetOf(b, a) })
         measures.update(if (a < b) a to b else b to a, { it += d }, { mutableListOf(d) })
@@ -51,9 +52,14 @@ class LocatingSystem(private val maxMeasure: Double) {
     operator fun get(beacon: Beacon): Map<Beacon, Vector3D> {
         val lastTime = positions[beacon]?.lastKey() ?: return mapOf(beacon to vector3DOfZero())
         val position = beacon.move(lastTime)
+        var t0 = 0L
         return relations[position]!!
-            .also { calculate(position, it) }
+            .also {
+                println(measureTimeMillis { calculate(position, it) })
+                t0 = System.currentTimeMillis()
+            }
             .let(::calculate)
+            .also { println(System.currentTimeMillis() - t0) }
             .mapKeys { (key, _) -> key.beacon }
     }
 
@@ -74,8 +80,9 @@ class LocatingSystem(private val maxMeasure: Double) {
             // 构造方程
             for (pair in targets.toList().lowerTriangular()) {
                 val (a, b) = pair
-                val e =
-                    lengthMemory.computeIfAbsent(pair) { (a.toExpressionVector() - b.toExpressionVector()).length() }
+                val e = lengthMemory.computeIfAbsent(pair) {
+                    (a.toExpressionVector() - b.toExpressionVector()).length()
+                }
                 measures[pair]?.run {
                     val l = average()
                     this@conditions += e - l
@@ -135,8 +142,8 @@ class LocatingSystem(private val maxMeasure: Double) {
                 this[v] = n.toDouble()
         }
         // 构造优化步骤函数
-        val f = dampingNewton(errors.sum(), variables(init.expressions.keys), *domains)
-        val result = optimize(init, 100, 5e-6, f)
+        val f = fastestBatchGD(errors.sum(), variables(init.expressions.keys), *domains)
+        val result = optimize(init, 3000, 5e-6, f)
         positions[p] = result.toVector(p.space).to3D()
     }
 
