@@ -2,10 +2,12 @@
 
 package org.mechdancer.symbol.core
 
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.symbol.core.Constant.Companion.`0`
 import org.mechdancer.symbol.core.Constant.Companion.`1`
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import org.mechdancer.symbol.core.Constant.Companion.ln
+import kotlin.math.pow
 import kotlin.math.sign
 
 /**
@@ -23,7 +25,8 @@ sealed class Factor : FactorExpression {
     val isBasic
         get() = member is Variable
 
-    override fun d() = Product[df, member.d()]
+    /** 复合函数求导的链式法则 */
+    final override fun d() = Product[df, member.d()]
 
     /**
      * 复合函数的代入法则
@@ -42,6 +45,9 @@ sealed class Factor : FactorExpression {
 
     /** 代入构造函数 */
     protected abstract fun substitute(e: Expression): Expression
+
+    /** 函数成员转化为不具名形式 */
+    protected fun internal(order: List<Variable>) = member.toFunction(order)
 
     /** 对复合函数的成分加括号 */
     protected val parameterString get() = if (isBasic) "$member" else "($member)"
@@ -63,6 +69,10 @@ class Power private constructor(
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substitute(e: Expression) = get(e, exponent)
+
+    override fun toFunction(order: List<Variable>): (Vector) -> Double =
+        internal(order).let { { v -> it(v).pow(exponent.value) } }
+
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
 
@@ -111,6 +121,9 @@ class Exponential private constructor(
     override val df by lazy { this * ln(base) }
     override fun substitute(e: Expression) = get(base, e)
 
+    override fun toFunction(order: List<Variable>): (Vector) -> Double =
+        internal(order).let { { v -> base.value.pow(it(v)) } }
+
     override fun equals(other: Any?) =
         this === other || other is Exponential && base == other.base && member == other.member
 
@@ -146,6 +159,10 @@ class Ln private constructor(
     LnExpression {
     override val df by lazy { Power[member, `-1`] }
     override fun substitute(e: Expression) = get(e)
+
+    override fun toFunction(order: List<Variable>): (Vector) -> Double =
+        internal(order).let { { v -> kotlin.math.ln(it(v)) } }
+
     override fun equals(other: Any?) = this === other || other is Ln && member == other.member
     override fun hashCode() = member.hashCode()
     override fun toString() = "ln$parameterString"

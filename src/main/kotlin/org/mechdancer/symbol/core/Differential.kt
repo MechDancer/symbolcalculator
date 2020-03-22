@@ -1,5 +1,7 @@
 package org.mechdancer.symbol.core
 
+import org.mechdancer.algebra.core.Vector
+
 inline class Differential(val variable: Variable)
     : FactorExpression,
       BaseExpression {
@@ -12,6 +14,6 @@ inline class Differential(val variable: Variable)
             else     -> this
         }
 
+    override fun toFunction(order: List<Variable>): (Vector) -> Double = { .0 }
     override fun toString() = "d$variable"
-    override fun toTex() = "d${variable.toTex()}"
 }

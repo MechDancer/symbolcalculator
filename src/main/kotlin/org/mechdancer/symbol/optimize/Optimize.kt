@@ -1,5 +1,6 @@
 package org.mechdancer.symbol.optimize
 
+import org.mechdancer.algebra.implement.vector.listVectorOf
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Expression
@@ -26,9 +27,14 @@ fun newton(
 
     val df = f.d() / v.d()
     val ddf = df.d() / v.d()
+
+    val ndf = df.toFunction(listOf(v))
+    val nddf = ddf.toFunction(listOf(v))
+
     return { p ->
-        val g = df[p]
-        val l = abs(g / ddf[p])
+        val s = listVectorOf(p)
+        val g = ndf(s)
+        val l = abs(g / nddf(s))
         p - g.sign * l to l
     }
 }

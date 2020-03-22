@@ -5,7 +5,7 @@ import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
 
 /** 变量空间 */
-inline class VariableSpace(val variables: Set<Variable>) {
+inline class VariableSpace(val variables: List<Variable>) {
     /** 空间的维度 */
     val dim get() = variables.size
 
@@ -26,17 +26,27 @@ inline class VariableSpace(val variables: Set<Variable>) {
             .let(::ExpressionVector)
 
     /** 求变量空间的交空间 */
-    operator fun times(others: VariableSpace) = VariableSpace(variables intersect others.variables)
+    operator fun times(others: VariableSpace) =
+        variables(variables.toSet() intersect others.variables.toSet())
 
     /** 求变量空间的并空间 */
-    operator fun plus(others: VariableSpace) = VariableSpace(variables + others.variables)
+    operator fun plus(others: VariableSpace) =
+        variables(variables + others.variables)
 
     /** 求变量空间的差空间 */
-    operator fun minus(others: VariableSpace) = VariableSpace(variables - others.variables)
+    operator fun minus(others: VariableSpace) =
+        variables(variables - others.variables)
 
     companion object {
-        fun variables(vararg names: String) = VariableSpace(names.map(::Variable).toSet())
-        fun variables(range: CharRange) = VariableSpace(range.map { Variable(it.toString()) }.toSet())
+        fun variables(variables: Iterable<Variable>) =
+            VariableSpace(variables.toSortedSet().toList())
+
+        fun variables(vararg names: String) =
+            VariableSpace(names.toSortedSet().map(::Variable))
+
+        fun variables(range: CharRange) =
+            VariableSpace(range.map { Variable(it.toString()) })
+
         val xyz = variables('x'..'z')
         val characters = variables('a'..'z')
     }

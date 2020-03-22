@@ -6,6 +6,7 @@ import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.VariableSpace
+import java.util.*
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -32,9 +33,9 @@ fun point(vararg pairs: Pair<Variable, Number>) =
 
 // 变量收集器
 
-fun collector() = mutableSetOf<Variable>()
+fun variableCollector() = sortedSetOf<Variable>()
 
-fun MutableSet<Variable>.toSpace() = VariableSpace(this)
+fun SortedSet<Variable>.toSpace() = VariableSpace(toList())
 
 fun Vector2D.toExpression(
     vx: Variable = Variable("x"),

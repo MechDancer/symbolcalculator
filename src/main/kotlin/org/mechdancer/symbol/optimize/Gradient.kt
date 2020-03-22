@@ -1,5 +1,7 @@
 package org.mechdancer.symbol.optimize
 
+import org.mechdancer.algebra.function.vector.plus
+import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.linear.ExpressionVector
 import org.mechdancer.symbol.linear.Hamiltonian
@@ -20,17 +22,19 @@ fun batchGD(
     vararg domains: Domain,
     alpha: (Double) -> Double
 ): OptimizeStep<ExpressionVector> {
-    val gradient = Hamiltonian.dfToGrad(error.d(), space)
+    val gradient = Hamiltonian.dfToGrad(error.d(), space).toFunction(space)
     return { p ->
+        val v = p.toVector(space)
         val limit = domains.mapNotNull { it.mapExp(p) }
         val g = if (limit.isNotEmpty()) {
-            gradient + limit.associate { (v, _, d) -> v to d }.let(::ExpressionVector)
+            val values = limit.associate { (v, _, d) -> v to d.toDouble() }
+            gradient(v) + space.variables.map { values[it] ?: .0 }.toListVector()
         } else {
-            gradient
-        }.substitute(p)
-        val l = g.length().toDouble()
+            gradient(v)
+        }
+        val l = g.length
         val a = alpha(l)
-        p - g * a to l * a
+        p - space.order(g) * a to l * a
     }
 }
 
@@ -46,8 +50,11 @@ fun fastestBatchGD(
     space: VariableSpace,
     vararg domains: Domain
 ): OptimizeStep<ExpressionVector> {
-    val gradient = Hamiltonian.dfToGrad(error.d(), space)
-    return { p -> domains.fastestOf(error, p, gradient.substitute(p), Domain::mapLinear) }
+    val gradient = Hamiltonian.dfToGrad(error.d(), space).toFunction(space)
+    return { p ->
+        val dp = space.order(gradient(p.toVector(space)))
+        domains.fastestOf(error, p, dp, Domain::mapLinear)
+    }
 }
 
 /**

@@ -6,7 +6,7 @@ import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.linear.VariableSpace
+import org.mechdancer.symbol.linear.VariableSpace.Companion.variables
 import org.mechdancer.symbol.optimize.*
 import java.util.*
 import kotlin.collections.component1
@@ -89,19 +89,19 @@ class LocatingSystem(private val maxMeasure: Double) {
                 for ((v, n) in target.toExpressionVector(positions[target]!!).expressions)
                     this[v] = n.toDouble()
         }
-        val space = VariableSpace(init.expressions.keys)
+        val space = variables(init.expressions.keys)
         // 构造优化步骤函数
         val f = fastestBatchGD(errors.sum(), space, *domain)
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
-                targets.associate { b -> b.beacon to p.toVector(b.variables).to3D() }.let(painter)
+                targets.associate { b -> b.beacon to p.toVector(b.space).to3D() }.let(painter)
             }
             .take(1000)
             .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         return targets.associateWith { p ->
-            result.toVector(p.variables).to3D().also { positions[p] = it }
+            result.toVector(p.space).to3D().also { positions[p] = it }
         }
     }
 
@@ -135,9 +135,9 @@ class LocatingSystem(private val maxMeasure: Double) {
                 this[v] = n.toDouble()
         }
         // 构造优化步骤函数
-        val f = dampingNewton(errors.sum(), VariableSpace(init.expressions.keys), *domains)
+        val f = dampingNewton(errors.sum(), variables(init.expressions.keys), *domains)
         val result = optimize(init, 20, 1e-4, f)
-        positions[p] = result.toVector(p.variables).to3D()
+        positions[p] = result.toVector(p.space).to3D()
     }
 
     private companion object {

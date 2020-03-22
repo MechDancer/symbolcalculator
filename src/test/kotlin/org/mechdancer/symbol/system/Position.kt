@@ -4,6 +4,7 @@ import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.symbol.core.Constant
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.linear.ExpressionVector
+import org.mechdancer.symbol.linear.VariableSpace
 
 /**
  * 每个定位点对应标签的一次有意义的移动
@@ -18,6 +19,8 @@ data class Position(
                Variable("y$postfix"),
                Variable("z$postfix"))
     }
+
+    val space by lazy { VariableSpace.variables(variables) }
 
     fun isStatic() = time < 0
 

@@ -1,5 +1,6 @@
 package org.mechdancer.symbol.linear
 
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.Expression
@@ -39,6 +40,16 @@ inline class ExpressionVector(val expressions: Map<Variable, Expression>) {
                 r.mapValues { (_, e0) -> e0.substitute(v, e) }
             }.let(::ExpressionVector)
 
-    fun toVector(order: Iterable<Variable>) =
-        order.map { expressions.getValue(it).toDouble() }.toListVector()
+    fun toVector(space: VariableSpace): Vector =
+        space.variables.map { expressions[it]?.toDouble() ?: .0 }.toListVector()
+
+    fun toFunction(space: VariableSpace): (Vector) -> Vector {
+        val list = space.variables.map { expressions[it]?.toFunction(space.variables) ?: { .0 } }
+        return { v ->
+            if (dim >= 6)
+                list.parallelStream().mapToDouble { it(v) }.toList().toListVector()
+            else
+                list.map { it(v) }.toListVector()
+        }
+    }
 }

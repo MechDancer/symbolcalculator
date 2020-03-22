@@ -111,7 +111,7 @@ class SimulationWorld internal constructor(
         /** [t]℃ 时的声速 */
         fun soundVelocity(t: Double) = 20.048 * sqrt(t + 273.15)
 
-        private val collector = collector()
+        private val collector = variableCollector()
         private val t by variable(collector) // 飞行时间
         private val x by variable(collector) // 有效声音方向
         private val y by variable(collector) //

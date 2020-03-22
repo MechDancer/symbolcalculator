@@ -1,5 +1,6 @@
 package org.mechdancer.symbol.core
 
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.symbol.core.Constant.Companion.`0`
 import org.mechdancer.symbol.core.Constant.Companion.`1`
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
@@ -48,6 +49,11 @@ class Sum private constructor(
 
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
+
+    override fun toFunction(order: List<Variable>): (Vector) -> Double {
+        val list = products.map { it.toFunction(order) }
+        return { v -> list.sumByDouble { it(v) } + tail.value }
+    }
 
     override fun equals(other: Any?) =
         this === other || other is Sum && tail == other.tail && products == other.products
@@ -143,6 +149,11 @@ class Product private constructor(
 
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(factors.map { it.substitute(from, to) }) * times
+
+    override fun toFunction(order: List<Variable>): (Vector) -> Double {
+        val list = factors.map { it.toFunction(order) }
+        return { v -> list.fold(times.value) { product, it -> product * it(v) } }
+    }
 
     override fun equals(other: Any?) =
         this === other || other is Product && times == other.times && factors == other.factors

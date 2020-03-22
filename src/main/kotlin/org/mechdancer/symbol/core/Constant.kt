@@ -1,5 +1,6 @@
 package org.mechdancer.symbol.core
 
+import org.mechdancer.algebra.core.Vector
 import java.text.DecimalFormat
 import kotlin.math.E
 import kotlin.math.PI
@@ -10,6 +11,7 @@ import kotlin.math.pow
 inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     override fun d() = `0`
     override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
+    override fun toFunction(order: List<Variable>): (Vector) -> Double = { value }
     override fun compareTo(other: Constant) = value.compareTo(other.value)
     override fun toString(): String = formatter.format(value)
 
@@ -20,7 +22,6 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
-    override fun toTex(): Tex = toString()
 
     @Suppress("ObjectPropertyName")
     companion object {
@@ -28,13 +29,14 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
         val NaN = Constant(Double.NaN)
 
-        val e = Constant(E)
-        val pi = Constant(PI)
-        val `+∞` = Constant(Double.POSITIVE_INFINITY)
-        val `-∞` = Constant(Double.NEGATIVE_INFINITY)
-
         val zero = Constant(.0)
         val one = Constant(1.0)
+        val pi = Constant(PI)
+
+        val e = Constant(E)
+        val `π` = pi
+        val `+∞` = Constant(Double.POSITIVE_INFINITY)
+        val `-∞` = Constant(Double.NEGATIVE_INFINITY)
         val `0` get() = zero
         val `1` get() = one
         val `-1` = Constant(-1.0)

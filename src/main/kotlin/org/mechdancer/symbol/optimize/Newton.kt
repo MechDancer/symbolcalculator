@@ -23,11 +23,12 @@ fun newton(
     space: VariableSpace
 ): OptimizeStep<ExpressionVector> {
     val df = error.d()
-    val gradient = Hamiltonian.dfToGrad(df, space)
-    val hessian = HessianMatrix(df.d(), space)
+    val gradient = Hamiltonian.dfToGrad(df, space).toFunction(space)
+    val hessian = HessianMatrix(df.d(), space).toFunction(space)
     return { p ->
-        val g = gradient.substitute(p).toVector(space.variables)
-        val h = hessian.toMatrix(p).inverse() * g
+        val vector = p.toVector(space)
+        val g = gradient(vector)
+        val h = hessian(vector).inverse() * g
         val s = h dot g
         val step = if (s < 0) g else {
             val k = s / h.length / g.length
@@ -51,11 +52,12 @@ fun dampingNewton(
 ): OptimizeStep<ExpressionVector> {
     // 微分
     val df = error.d()
-    val gradient = Hamiltonian.dfToGrad(df, space)
-    val hessian = HessianMatrix(df.d(), space)
+    val gradient = Hamiltonian.dfToGrad(df, space).toFunction(space)
+    val hessian = HessianMatrix(df.d(), space).toFunction(space)
     return { p ->
-        val g = gradient.substitute(p).toVector(space.variables)
-        val h = hessian.toMatrix(p).inverse() * g
+        val v = p.toVector(space)
+        val g = gradient(v)
+        val h = hessian(v).inverse() * g
         // 确定最优下降方向
         val dp = if (g dot h < 0) g else h
         domains.fastestOf(error, p, space.order(dp), Domain::mapExp)

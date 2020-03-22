@@ -65,7 +65,7 @@ fun main() {
         for (y in if (x % 2 == 0) x / 2..upperRange else upperRange downTo x / 2)
             for (z in if (y % 2 == 0) zList else zList.asReversed()) {
                 val mobile = vector3D(x, y, z)
-                val errors = (1..20).map {
+                val errors = (1..50).map {
                     val map = beacons.map(::deploy)
                     val measures = map.map { p -> measure(p euclid mobile).takeIf { it < maxMeasure } ?: -1.0 }
                     val result = locator(measures)!!

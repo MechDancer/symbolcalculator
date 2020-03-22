@@ -1,13 +1,12 @@
 package org.mechdancer.symbol.linear
 
 import org.mechdancer.algebra.core.Matrix
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.algebra.implement.matrix.builder.listMatrixOf
 import org.mechdancer.symbol.core.Differential
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.div
-import org.mechdancer.symbol.substitute
-import org.mechdancer.symbol.toDouble
 import kotlin.streams.toList
 
 /** 海森矩阵 */
@@ -38,17 +37,15 @@ class HessianMatrix internal constructor(
         }
     }
 
-    /** 代入数值，产生数量矩阵 */
-    fun toMatrix(values: ExpressionVector): Matrix {
-        // 代入之后应该全是数值
-        val valueSave = expressions
-            .parallelStream()
-            .map { it.substitute(values).toDouble() }
-            .toList()
-        return listMatrixOf(dim, dim) { r, c ->
-            when {
-                r >= c -> valueSave[r * (r + 1) / 2 + c]
-                else   -> valueSave[c * (c + 1) / 2 + r]
+    fun toFunction(space: VariableSpace): (Vector) -> Matrix {
+        val list = expressions.map { it.toFunction(space.variables) }
+        return { v ->
+            val valueSave = list.parallelStream().mapToDouble { it(v) }.toList()
+            listMatrixOf(dim, dim) { r, c ->
+                when {
+                    r >= c -> valueSave[r * (r + 1) / 2 + c]
+                    else   -> valueSave[c * (c + 1) / 2 + r]
+                }
             }
         }
     }
