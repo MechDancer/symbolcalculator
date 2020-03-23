@@ -5,6 +5,7 @@ package org.mechdancer.symbol
 import org.mechdancer.symbol.core.*
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import kotlin.math.E
+import kotlin.streams.toList
 
 /** 求表达式全微分 */
 fun d(e: Expression) = e.d()
@@ -90,3 +91,9 @@ fun Array<Expression>.meanSquare() = run { sumBy { it `^` 2 } / (2 * size) }
 // 其他
 
 fun Expression.toDouble() = (this as Constant).value
+
+internal fun <T, U> Collection<T>.mapParallel(block: (T) -> U) =
+    parallelStream().map(block).toList()
+
+internal fun <T> Collection<T>.sumParallel(block: (T) -> Double) =
+    parallelStream().mapToDouble(block).sum()

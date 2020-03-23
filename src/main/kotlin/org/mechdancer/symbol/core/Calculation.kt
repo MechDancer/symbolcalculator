@@ -3,6 +3,8 @@ package org.mechdancer.symbol.core
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
 import org.mechdancer.symbol.core.Constant.Companion.one
 import org.mechdancer.symbol.core.Constant.Companion.zero
+import org.mechdancer.symbol.mapParallel
+import org.mechdancer.symbol.sumParallel
 import kotlin.math.sign
 
 /** 运算 */
@@ -44,7 +46,11 @@ class Sum private constructor(
 ) : Calculation(),
     BaseExpression,
     LnExpression {
-    override fun d() = get(products.map(Expression::d))
+    override fun d() =
+        if (products.size > parallelism)
+            products.mapParallel(Expression::d).let(::get)
+        else
+            products.map(Expression::d).let(::get)
 
     override fun substitute(from: Expression, to: Expression) =
         if (this == from) to else get(products.map { it.substitute(from, to) }) + tail
@@ -98,9 +104,7 @@ class Sum private constructor(
                     // 积式与常数相乘必然还是积式
                     val products = collector
                         .asSequence()
-                        .map { (e, k) ->
-                            Product[e, Constant(k)] as ProductExpression
-                        }
+                        .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
                         .toSet()
                     when {
                         products.isEmpty()               -> Constant(tail)
@@ -119,7 +123,7 @@ class Sum private constructor(
                 }
 
             return when (e) {
-                zero                 -> Unit
+                zero, -zero          -> Unit
                 is Constant          -> merge(one, e.value)
                 is ProductExpression -> inner(e) // {var, product = {factor = d_, {pow, exp, ln}, product}}
                 is Sum               -> {
@@ -132,7 +136,7 @@ class Sum private constructor(
 
         private fun <T> List<(T) -> Double>.parallel(tail: Constant) =
             if (size > parallelism)
-                { t: T -> parallelStream().mapToDouble { it(t) }.sum() + tail.value }
+                { t: T -> sumParallel { it(t) } + tail.value }
             else
                 { t: T -> sumByDouble { it(t) } + tail.value }
     }
@@ -146,12 +150,11 @@ class Product private constructor(
     ProductExpression,
     ExponentialExpression,
     LnExpression {
-    override fun d(): Expression =
-        factors.indices
-            .map { i ->
-                factors
-                    .mapIndexed { j, it -> if (i == j) it.d() else it }
-                    .let(Builder::get)
+    override fun d() =
+        factors
+            .withIndex()
+            .map { (i, fi) ->
+                get(factors.toMutableList<Expression>().apply { removeAt(i); add(fi.d()) })
             }
             .let(Sum.Builder::get) * times
 
@@ -200,7 +203,7 @@ class Product private constructor(
                     val products = mutableListOf(ProductCollector())
                     for (e in list) {
                         when (e) {
-                            zero                 -> return zero
+                            zero, -zero          -> return zero
                             one                  -> Unit
                             is Constant          -> products.removeIf { it *= e; it.isZero() }
                             is ProductExpression -> products.removeIf { it *= e; it.isZero() }
@@ -209,7 +212,7 @@ class Product private constructor(
                                 products.clear()
                                 for (a in copy) {
                                     products += e.products.mapNotNull { (a * it).takeUnless(ProductCollector::isZero) }
-                                    if (e.tail != zero) products += a * e.tail
+                                    if (e.tail.value != .0) products += a * e.tail
                                 }
                             }
                             else                 -> throw UnsupportedOperationException()

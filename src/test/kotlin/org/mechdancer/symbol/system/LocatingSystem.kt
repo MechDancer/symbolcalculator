@@ -5,6 +5,7 @@ import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.to3D
 import org.mechdancer.algebra.implement.vector.vector3DOfZero
 import org.mechdancer.symbol.*
+import org.mechdancer.symbol.Timer
 import org.mechdancer.symbol.core.Expression
 import org.mechdancer.symbol.core.VariableSpace.Companion.variables
 import org.mechdancer.symbol.optimize.*
@@ -13,7 +14,6 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 import kotlin.random.Random.Default.nextDouble
-import kotlin.system.measureTimeMillis
 
 class LocatingSystem(private val maxMeasure: Double) {
     var painter: (Map<Beacon, Vector3D>) -> Unit = {}
@@ -52,14 +52,9 @@ class LocatingSystem(private val maxMeasure: Double) {
     operator fun get(beacon: Beacon): Map<Beacon, Vector3D> {
         val lastTime = positions[beacon]?.lastKey() ?: return mapOf(beacon to vector3DOfZero())
         val position = beacon.move(lastTime)
-        var t0 = 0L
         return relations[position]!!
-            .also {
-                println(measureTimeMillis { calculate(position, it) })
-                t0 = System.currentTimeMillis()
-            }
+            .also { calculate(position, it) }
             .let(::calculate)
-            .also { println(System.currentTimeMillis() - t0) }
             .mapKeys { (key, _) -> key.beacon }
     }
 
@@ -98,7 +93,9 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         val space = variables(init.expressions.keys)
         // 构造优化步骤函数
-        val f = dampingNewton(errors.sum(), space, *domain)
+        val timer = Timer("system")
+        val f = fastestBatchGD(errors.sum(), space, *domain)
+        timer.mark()
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
@@ -107,6 +104,7 @@ class LocatingSystem(private val maxMeasure: Double) {
             .take(2000)
             .firstOrLast { (_, step) -> step < 5e-4 }
             .first
+        timer.display()
         return targets.associateWith { p ->
             result.toVector(p.space).to3D().also { positions[p] = it }
         }
@@ -143,7 +141,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         // 构造优化步骤函数
         val f = fastestBatchGD(errors.sum(), variables(init.expressions.keys), *domains)
-        val result = optimize(init, 3000, 5e-6, f)
+        val result = optimize(init, 2000, 2e-4, f)
         positions[p] = result.toVector(p.space).to3D()
     }
 
