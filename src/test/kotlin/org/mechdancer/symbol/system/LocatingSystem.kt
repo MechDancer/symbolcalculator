@@ -94,14 +94,16 @@ class LocatingSystem(private val maxMeasure: Double) {
         val space = variables(init.expressions.keys)
         // 构造优化步骤函数
         val timer = Timer("system")
-        val f = fastestBatchGD(errors.sum(), space, *domain)
+        val f =
+            if (space.dim < 18) dampingNewton(errors.sum(), space, *domain)
+            else fastestBatchGD(errors.sum(), space, *domain)
         timer.mark()
         // val result = optimize(init, 500, 1e-4, f)
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
                 targets.associate { b -> b.beacon to p.toVector(b.space).to3D() }.let(painter)
             }
-            .take(2000)
+            .take(1000)
             .firstOrLast { (_, step) -> step < 5e-4 }
             .first
         timer.display()
@@ -141,7 +143,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         }
         // 构造优化步骤函数
         val f = fastestBatchGD(errors.sum(), variables(init.expressions.keys), *domains)
-        val result = optimize(init, 2000, 2e-4, f)
+        val result = optimize(init, 1000, 2e-4, f)
         positions[p] = result.toVector(p.space).to3D()
     }
 
