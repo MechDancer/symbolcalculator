@@ -72,9 +72,11 @@ class LocatingSystem(private val maxMeasure: Double) {
         : Map<Position, Vector3D> {
         // 收集优化条件
         val (errors, domain, init) = conditions {
-            // 构造方程
-            for (pair in targets.toList().lowerTriangular()) {
-                val (a, b) = pair
+            val list = targets.toList()
+            for (i in list.indices) for (j in i + 1 until list.size) {
+                val a = list[i]
+                val b = list[j]
+                val pair = a to b
                 val e = lengthMemory.computeIfAbsent(pair) {
                     (a.toExpressionVector() - b.toExpressionVector()).length()
                 }
@@ -95,7 +97,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         // 构造优化步骤函数
         val timer = Timer("system")
         val f =
-            if (space.dim < 18) dampingNewton(errors.sum(), space, *domain)
+            if (space.dim < 21) dampingNewton(errors.sum(), space, *domain)
             else fastestBatchGD(errors.sum(), space, *domain)
         timer.mark()
         // val result = optimize(init, 500, 1e-4, f)
@@ -142,7 +144,7 @@ class LocatingSystem(private val maxMeasure: Double) {
                 this[v] = n.toDouble()
         }
         // 构造优化步骤函数
-        val f = fastestBatchGD(errors.sum(), variables(init.expressions.keys), *domains)
+        val f = dampingNewton(errors.sum(), variables(init.expressions.keys), *domains)
         val result = optimize(init, 1000, 2e-4, f)
         positions[p] = result.toVector(p.space).to3D()
     }

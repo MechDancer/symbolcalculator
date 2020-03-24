@@ -97,9 +97,3 @@ internal fun <T, U> Collection<T>.mapParallel(block: (T) -> U) =
 
 internal fun <T> Collection<T>.sumParallel(block: (T) -> Double) =
     parallelStream().mapToDouble(block).sum()
-
-internal fun <T> List<T>.lowerTriangular() =
-    sequence {
-        for (i in indices) for (j in i + 1 until size)
-            yield(get(i) to get(j))
-    }
