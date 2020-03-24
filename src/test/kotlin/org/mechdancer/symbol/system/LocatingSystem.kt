@@ -148,12 +148,6 @@ class LocatingSystem(private val maxMeasure: Double) {
     }
 
     private companion object {
-        fun <T> List<T>.lowerTriangular() =
-            sequence {
-                for (i in indices) for (j in i + 1 until size)
-                    yield(get(i) to get(j))
-            }
-
         fun <TK, TV> HashMap<TK, TV>.update(key: TK, block: (TV) -> Unit, default: () -> TV) =
             compute(key) { _, last -> last?.also(block) ?: default() }
 

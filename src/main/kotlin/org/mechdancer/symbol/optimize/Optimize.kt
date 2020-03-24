@@ -1,8 +1,11 @@
 package org.mechdancer.symbol.optimize
 
-import org.mechdancer.symbol.*
 import org.mechdancer.symbol.core.*
+import org.mechdancer.symbol.div
 import org.mechdancer.symbol.linear.NamedExpressionVector
+import org.mechdancer.symbol.substitute
+import org.mechdancer.symbol.toDouble
+import org.mechdancer.symbol.variable
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -41,7 +44,7 @@ internal fun fastestWithNewton(
     dp: NamedExpressionVector
 ): Pair<NamedExpressionVector, Double> {
     val l by variable
-    val next = p - dp.map { it * l }
+    val next = p - dp * l
     val a = optimize(1.0, 20, 1e-9, newton(e.substitute(next), l))
     return next.substitute(l, Constant(a)) to dp.length().toDouble() * abs(a)
 }
