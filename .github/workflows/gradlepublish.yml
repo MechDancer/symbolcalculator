@@ -4,7 +4,8 @@
 name: Publish with Gradle
 
 on:
-  tags:
+  release:
+    types: [published]
 
 jobs:
   build:
