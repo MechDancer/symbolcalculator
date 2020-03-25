@@ -22,18 +22,15 @@ jobs:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('*.gradle.kts') }}
           restore-keys: ${{ runner.os }}-gradle
-      - name: grant execute permission for gradlew
-        run: chmod +x gradlew
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: grant execute permission for gradlew, build and publish
+        run: |
+          chmod +x gradlew
+          ./gradlew build publish
+        env:
+          USERNAME: ${{ github.actor }}
+          TOKEN: ${{ secrets.GitHubToken }}
       - name: upload artifact
         uses: actions/upload-artifact@v1
         with:
           name: libs
           path: build/libs
-
-      - name: Publish to GitHub Packages
-        run: ./gradlew publish
-        env:
-          USERNAME: ${{ github.actor }}
-          TOKEN: ${{ secrets.GitHubToken }}
