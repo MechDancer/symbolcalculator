@@ -1,8 +1,8 @@
-name: Build with Gradle
+name: Publish on GitHub Package
 
 on:
   push:
-    tags: '!**'
+    tags: '**'
 
 jobs:
   build:
@@ -14,16 +14,21 @@ jobs:
         uses: actions/setup-java@v1.3.0
         with:
           java-version: 11
+          server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+          settings-path: ${{ github.workspace }} # location for the settings.xml file
       - name: cache Gradle packages
         uses: actions/cache@v1.1.2
         with:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('*.gradle.kts') }}
           restore-keys: ${{ runner.os }}-gradle
-      - name: grant execute permission for gradlew and build
+      - name: grant execute permission for gradlew, build and publish
         run: |
           chmod +x gradlew
-          ./gradlew build
+          ./gradlew build publish
+        env:
+          USERNAME: ${{ github.actor }}
+          TOKEN: ${{ secrets.GitHubToken }}
       - name: upload artifact
         uses: actions/upload-artifact@v1
         with:

@@ -1,5 +1,8 @@
 # 符号计算器
 
+![Build on GitHub Action](https://github.com/MechDancer/symbolcalculator/workflows/Build%20with%20Gradle/badge.svg)
+![Publish on GitHub Package](https://github.com/MechDancer/symbolcalculator/workflows/Publish%20with%20Gradle/badge.svg)
+
 实现了初等函数的符号运算，现已支持：
 - 部分基本初等函数：常数函数、幂函数、指数函数、对数函数
 
