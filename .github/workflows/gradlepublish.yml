@@ -1,11 +1,8 @@
-# This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
-# For more information see: https://github.com/actions/setup-java#publishing-using-gradle
-
 name: Publish with Gradle
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: '**'
 
 jobs:
   build:
