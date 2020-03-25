@@ -61,7 +61,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/OWNER/REPOSITORY")
+            url = uri("https://maven.pkg.github.com/MechDancer/symbolcalculator")
             credentials {
                 username = System.getenv("USERNAME")
                 password = System.getenv("TOKEN")
