@@ -4,6 +4,7 @@
 name: Publish with Gradle
 
 on:
+  push:
   release:
     types: [created]
 
@@ -29,6 +30,11 @@ jobs:
         run: chmod +x gradlew
       - name: Build with Gradle
         run: ./gradlew build
+      - name: upload artifact
+          uses: actions/upload-artifact@v1
+          with:
+            name: libs
+            path: build/libs
       - name: Publish to GitHub Packages
         run: ./gradlew publish
         env:
