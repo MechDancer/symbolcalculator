@@ -1,6 +1,6 @@
 # environment
 .*/*
-!.github/workflows/
+!.github/
 !.idea/dictionaries/
 
 # make
