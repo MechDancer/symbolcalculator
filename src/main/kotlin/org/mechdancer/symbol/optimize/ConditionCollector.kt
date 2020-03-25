@@ -1,12 +1,10 @@
 package org.mechdancer.symbol.optimize
 
+import org.mechdancer.algebra.core.Vector
 import org.mechdancer.symbol.`^`
-import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.*
 import org.mechdancer.symbol.core.Constant.Companion.`-∞`
 import org.mechdancer.symbol.core.Constant.Companion.zero
-import org.mechdancer.symbol.core.Expression
-import org.mechdancer.symbol.core.FunctionExpression
-import org.mechdancer.symbol.core.Variable
 import org.mechdancer.symbol.div
 import org.mechdancer.symbol.linear.NamedExpressionVector
 import org.mechdancer.symbol.minus
@@ -35,6 +33,11 @@ class ConditionCollector {
 
     operator fun set(v: Variable, init: Double) =
         initValues.set(v, Constant(init))
+
+    operator fun set(space: VariableSpace, init: Vector) =
+        space.variables.forEachIndexed { i, v ->
+            initValues[v] = Constant(init[i])
+        }
 
     fun domain(e: Expression) =
         when (e) {

@@ -31,7 +31,7 @@ inline class NamedExpressionVector(val expressions: Map<Variable, Expression>) {
         map { it.substitute(others) }
 
     fun toVector(space: VariableSpace): Vector =
-        space.variables.map { expressions[it]?.toDouble() ?: .0 }.toListVector()
+        space.variables.map { expressions.getValue(it).toDouble() }.toListVector()
 
     private fun zip(
         others: NamedExpressionVector,
