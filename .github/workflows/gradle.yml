@@ -18,10 +18,11 @@ jobs:
           java-version: 11
       - name: grant execute permission for gradlew
         run: chmod +x gradlew
+      - name: Build with Gradle
+        run: ./gradlew build
       - name: upload artifact
         uses: actions/upload-artifact@v1
         with:
           name: package 
           path: build/libs
-      - name: Build with Gradle
-        run: ./gradlew build
+     
