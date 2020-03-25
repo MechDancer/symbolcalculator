@@ -23,7 +23,7 @@ jobs:
       - name: cache Gradle packages
         uses: actions/cache@v1.1.2
         with:
-          path: ${{ runner.os }}/${{ GRADLE_USER_HOME }}/caches
+          path: /home/.gradle/caches/
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
       - name: upload artifact
