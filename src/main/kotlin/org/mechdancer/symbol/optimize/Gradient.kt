@@ -13,28 +13,27 @@ import org.mechdancer.symbol.toDouble
  *
  * @param error 损失函数
  * @param space 变量空间
- * @param alpha 学习率系数
+ * @param controller 梯度控制器
  * @return 优化步骤函数
  */
 fun batchGD(
     error: Expression,
     space: VariableSpace,
     vararg domains: Domain,
-    alpha: (Double) -> Double
+    controller: LinearController
 ): OptimizeStep<NamedExpressionVector> {
     val gradient = gradient(error.d(), space).toFunction(space)
     return { p ->
         val v = p.toVector(space)
-        val limit = domains.mapNotNull { it.mapExp(p) }
+        val limit = domains.mapNotNull { it.mapLinear(p) }
         val g = if (limit.isNotEmpty()) {
             val values = limit.associate { (v, _, d) -> v to d.toDouble() }
             gradient(v) + space.variables.map { values[it] ?: .0 }.toListVector()
         } else {
             gradient(v)
         }
-        val l = g.length
-        val a = alpha(l)
-        p - space.order(g) * a to l * a
+        val h = controller(g)
+        p - space.order(h) to h.length
     }
 }
 

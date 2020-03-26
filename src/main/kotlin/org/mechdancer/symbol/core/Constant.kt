@@ -25,7 +25,7 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
     operator fun unaryMinus() = Constant(-value)
     infix fun pow(others: Constant) = Constant(value.pow(others.value))
 
-    @Suppress("ObjectPropertyName")
+    @Suppress("ObjectPropertyName", "unused", "NonAsciiCharacters")
     companion object {
         private val formatter = DecimalFormat("#.###")
 
@@ -33,10 +33,9 @@ inline class Constant(val value: Double) : Expression, Comparable<Constant> {
 
         val zero = Constant(.0)
         val one = Constant(1.0)
-        val pi = Constant(PI)
 
         val e = Constant(E)
-        val `π` = pi
+        val π = Constant(PI)
         val `+∞` = Constant(Double.POSITIVE_INFINITY)
         val `-∞` = Constant(Double.NEGATIVE_INFINITY)
         val `0` get() = zero

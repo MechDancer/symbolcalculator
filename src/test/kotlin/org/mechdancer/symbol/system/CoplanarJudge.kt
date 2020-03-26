@@ -10,12 +10,6 @@ import org.mechdancer.symbol.networksInfo
 import org.mechdancer.symbol.paintFrame3
 import kotlin.math.*
 
-// 海伦公式
-private fun heron(a: Double, b: Double, c: Double): Double {
-    val p = (a + b + c) / 2
-    return sqrt(p * (p - a) * (p - b) * (p - c))
-}
-
 /** 构造无序的二元组 */
 fun <T : Comparable<T>> sortedPairOf(a: T, b: T) =
     if (a < b) a to b else b to a
@@ -44,14 +38,18 @@ fun <T : Comparable<T>> coplanarJudgeWithEdges(
 
 /** 根据 4 点间不具名的边长集，计算 4 点共面程度 */
 fun coplanarJudgeWithEdges(vararg edges: Double): Double {
-    val mirror = Vector2D(-1.0, 1.0)
+    require(edges.size == 6)
+
     operator fun DoubleArray.component6() = this[5]
 
-    require(edges.size == 6)
+    // 海伦公式
+    fun heron(a: Double, b: Double, c: Double) =
+        ((a + b + c) / 2).let { p -> sqrt(p * (p - a) * (p - b) * (p - c)) }
+
     val (oa, ob, oc, ab, ac, bc) = edges
     val b = (heron(oa, ob, ab) * 2 / oa).let { x -> Vector2D(+x, sqrt(ob * ob - x * x)) }
     val c = (heron(oa, oc, ac) * 2 / oa).let { x -> Vector2D(-x, sqrt(oc * oc - x * x)) }
-    return min(abs((b euclid c) - bc), abs((b * mirror euclid c) - bc)) / bc
+    return min(abs((b euclid c) - bc), abs((b * Vector2D(-1.0, 1.0) euclid c) - bc)) / bc
 }
 
 fun main() {

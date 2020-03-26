@@ -103,9 +103,11 @@ class LocatingSystem(private val maxMeasure: Double) {
         // 确定未知数空间
         val space = variables(init.expressions.keys)
         // 构造优化步骤函数
-        val f =
-            if (space.dim < 3 * 7) dampingNewton(errors.sum(), space, *domain)
-            else fastestBatchGD(errors.sum(), space, *domain)
+        val f = when {
+            domain.isEmpty() -> batchGD(errors.sum(), space, *domain, controller = NagMethod(space.dim, 1.0, .99))
+            space.dim <= 20  -> dampingNewton(errors.sum(), space, *domain)
+            else             -> fastestBatchGD(errors.sum(), space, *domain)
+        }
         // 优化迭代
         val result = recurrence(init to .0) { (p, _) -> f(p) }
             .onEach { (p, _) ->
