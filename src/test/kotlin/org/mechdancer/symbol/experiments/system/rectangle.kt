@@ -12,6 +12,7 @@ fun main() = simulate {
     world {
         sigmaMeasure = .01
         sigmaDeploy = vector3D(1, 1, 1) * .2
+        thermometer { 15.0 }
     }
     maxMeasure = 30.0
     // 6 个固定标签组成矩形，1 个移动标签沿矩形对角线运动

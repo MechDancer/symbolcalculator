@@ -19,28 +19,56 @@ import kotlin.collections.component2
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-/** 测距仿真 */
+/**
+ * 测距仿真
+ *
+ * @param layout 固定标签部署结构
+ * @param temperature 气温
+ * @param thermometer 温度计
+ * @param maxMeasureTime 最大测量时间
+ * @param sigmaMeasure 测距误差标准差
+ */
 class SimulationWorld internal constructor(
-    val layout: Map<Beacon, Vector3D>,
+    private val layout: Map<Beacon, Vector3D>,
     var temperature: Double,
-    actualTemperature: Double,
+    private val thermometer: (Double) -> Double,
     private val maxMeasureTime: Long,
     private val sigmaMeasure: Double
 ) {
-    var actualTemperature = actualTemperature
-        set(value) {
-            if (value == field) return
-            field = value
-            edges = layout.toList().buildEdges(value, maxMeasureTime)
+    // 缓存固定标签之间测距
+    private var edges =
+        mapOf<Pair<Beacon, Beacon>, Double>()
+
+    /** 预测量（固定标签之间测距） */
+    fun preMeasures(): Map<Pair<Position, Position>, Double> {
+        // 更新固定标签之间声波飞行时间
+        edges = layout.toList().buildEdges(temperature, maxMeasureTime)
+
+        val c0 = soundVelocity(thermometer(temperature))
+        return edges.entries.associate { (pair, t) ->
+            val (a, b) = pair
+            a.static() to b.static() to t * c0 + gaussian(sigmaMeasure)
+        }
+    }
+
+    /** 位于 [p] 处的移动标签 [mobile] 发起一次测量 */
+    fun measure(mobile: Position, p: Vector3D) =
+        sequence {
+            val c0 = soundVelocity(thermometer(temperature))
+            val ca = soundVelocity(temperature)
+            for ((beacon, p0) in layout.entries.map { (b, p) -> b.static() to p }) {
+                val t = (p euclid p0) / ca
+                if (t < maxMeasureTime / 1000.0)
+                    yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
+            }
         }
 
-    private var edges =
-        layout.toList().buildEdges(actualTemperature, maxMeasureTime)
-
+    /** 固定标签结构（用于画图） */
     fun grid() = edges.keys.map { (a, b) ->
         listOf(layout.getValue(a), layout.getValue(b))
     }
 
+    /** 将一些标签计算位置覆盖到固定标签结构 */
     fun grid(map: Map<Beacon, Vector3D>) =
         sequence {
             val groups = map.keys.groupBy { it in layout }
@@ -54,27 +82,6 @@ class SimulationWorld internal constructor(
                 yield(listOf(pm, map.getValue(beacon)))
             }
         }.toList()
-
-    fun preMeasures(): Map<Pair<Position, Position>, Double> {
-        val c0 = soundVelocity(temperature)
-        return edges
-            .map { (pair, t) ->
-                val (a, b) = pair
-                a.static() to b.static() to t * c0 + gaussian(sigmaMeasure)
-            }
-            .toMap()
-    }
-
-    fun measure(mobile: Position, p: Vector3D) =
-        sequence {
-            val c0 = soundVelocity(temperature)
-            val ca = soundVelocity(actualTemperature)
-            for ((beacon, p0) in layout.entries.map { (b, p) -> b.static() to p }) {
-                val t = (p euclid p0) / ca
-                if (t < maxMeasureTime / 1000.0)
-                    yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
-            }
-        }
 
     fun transform(map: Map<Beacon, Vector3D>): Map<Beacon, Vector3D> {
         val pairs = map.mapNotNull { (key, p) -> layout[key]?.to(p) }.toMutableList()

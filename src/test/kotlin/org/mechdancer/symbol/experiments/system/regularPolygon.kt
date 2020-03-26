@@ -17,6 +17,7 @@ fun main() = simulate {
     world {
         sigmaMeasure = .01
         sigmaDeploy = vector3D(1, 1, 1) * .2
+        thermometer { 15.0 }
     }
     val edgeCount = 6
     val radius = when {
