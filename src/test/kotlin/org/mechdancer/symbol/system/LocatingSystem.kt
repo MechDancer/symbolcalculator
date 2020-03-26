@@ -134,10 +134,6 @@ class LocatingSystem(private val maxMeasure: Double) {
     }
 
     private companion object {
-        // 构造有序的二元组
-        fun <T : Comparable<T>> sortedPairOf(a: T, b: T) =
-            if (a < b) a to b else b to a
-
         // 修改哈希映射
         fun <TK, TV> HashMap<TK, TV>.update(key: TK, block: (TV) -> Unit, default: () -> TV) =
             compute(key) { _, last -> last?.also(block) ?: default() }
