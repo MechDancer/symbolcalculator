@@ -105,7 +105,7 @@ class LocatingSystem(private val maxMeasure: Double) {
         // 构造优化步骤函数
         val f = when {
             domain.isEmpty() -> batchGD(errors.sum(), space, *domain, controller = NagMethod(space.dim, 1.0, .99))
-            space.dim <= 20  -> dampingNewton(errors.sum(), space, *domain)
+            space.dim <= 24  -> dampingNewton(errors.sum(), space, *domain)
             else             -> fastestBatchGD(errors.sum(), space, *domain)
         }
         // 优化迭代
@@ -114,7 +114,7 @@ class LocatingSystem(private val maxMeasure: Double) {
                 targets.associate { b -> b.beacon to p.toVector(b.space).to3D() }.let(painter)
             }
             .take(1000)
-            .firstOrLast { (_, step) -> step < 5e-4 }
+            .firstOrLast { (_, step) -> step < 4e-4 }
             .first
         // 优化解整理为坐标
         return targets.associateWith { p ->
