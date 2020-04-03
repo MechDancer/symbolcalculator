@@ -1,6 +1,7 @@
 package org.mechdancer.symbol
 
 import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Constant.Companion.π
 import kotlin.math.sqrt
 
 fun main() {
@@ -51,5 +52,15 @@ fun main() {
         println(f.toString())
         println(f.toStringAsComponent())
         println(f.toStringAsPolar())
+    }
+    println()
+    run {
+        val f = tan(x)
+        println(f)
+        println(f.substitute(x, π / 4))
+
+        val df = d(f)
+        println(df)
+        println(df.substitute(x, π / 4))
     }
 }

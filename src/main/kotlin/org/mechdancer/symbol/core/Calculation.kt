@@ -73,10 +73,10 @@ class Sum private constructor(
         buildString {
             append(which(products.first()))
             for (item in products.asSequence().drop(1))
-                if (item is Product && item.times < `0`)
-                    append(" - ${which(item.resetTimes(-item.times))}")
-                else
-                    append(" + ${which(item)}")
+                when (item) {
+                    is Product -> append(item.toStringAsComponent())
+                    else       -> append(" + ${which(item)}")
+                }
             when {
                 tail > `0` -> append(" + ${which(tail)}")
                 tail < `0` -> append(" - ${which(-tail)}")
@@ -188,9 +188,30 @@ class Product private constructor(
             groups[true]?.let { append(it.joinToString(" ", transform = which)) }
         }
 
-    internal fun resetTimes(new: Constant) = Product(factors, new)
-    override fun timesWithoutCheck(c: Constant) = resetTimes(times * c)
-    override fun divWithoutCheck(c: Constant) = resetTimes(times / c)
+    internal fun toStringAsComponent(): String {
+        val sign = when {
+            times.re > 0 -> '+'
+            times.re < 0 -> '-'
+            times.im > 0 -> '+'
+            times.im < 0 -> '-'
+            else         -> throw RuntimeException()
+        }
+        val k = if (sign == '+') times else -times
+        return buildString {
+            append(" $sign ")
+            if (k != `1`) append("${times.toStringAsComponent()} ")
+            val groups = factors.groupBy(Builder::isDifferential)
+            groups[false]?.let { append(it.joinToString(" ")) }
+            if (groups.size == 2) append(" ")
+            groups[true]?.let { append(it.joinToString(" ")) }
+        }
+    }
+
+    internal fun resetTimes(new: Constant) =
+        if (new == `1` && factors.size == 1) factors.first() else Product(factors, new)
+
+    override fun timesWithoutCheck(c: Constant): Expression = resetTimes(times * c)
+    override fun divWithoutCheck(c: Constant): Expression = resetTimes(times / c)
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
@@ -266,10 +287,7 @@ class Product private constructor(
                             if (tail == `1` && factors.size == 1)
                                 factors.first()
                             else
-                                Product(factors
-                                            .map { it as FactorExpression }
-                                            .toSet(),
-                                        tail)
+                                Product(factors.map { it as FactorExpression }.toSet(), tail)
                         } ?: tail
                         groups[false]?.let { Product[Product[it], product] } ?: product
                     }

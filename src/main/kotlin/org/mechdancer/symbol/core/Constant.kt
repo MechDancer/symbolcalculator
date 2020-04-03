@@ -35,8 +35,8 @@ data class Constant(val re: Double, val im: Double = .0)
             reText == "0" && imText == "0" -> "0"
             reText == "0"                  -> imText
             imText == "0"                  -> reText
-            imText.startsWith('-')         -> "$reText - ${imText.drop(1)}i"
-            else                           -> "$reText + ${imText}i"
+            imText.startsWith('-')         -> "$reText - ${imText.drop(1)} i"
+            else                           -> "$reText + $imText i"
         }
     }
 
@@ -69,7 +69,7 @@ data class Constant(val re: Double, val im: Double = .0)
     @Suppress("ObjectPropertyName", "unused", "NonAsciiCharacters")
     companion object {
         private val formatter = DecimalFormat("#.###")
-        private fun format(n: Double) = formatter.format(n)!!
+        private fun format(n: Double) = if (n in -9e-4..9e-4) "0" else formatter.format(n)!!
 
         fun polar(norm: Double, arg: Double) =
             Constant(norm * cos(arg), norm * sin(arg))

@@ -86,7 +86,7 @@ class Power private constructor(
         this === other || other is Power && exponent == other.exponent && member == other.member
 
     override fun hashCode() = member.hashCode() xor exponent.hashCode()
-    override fun toString() = "$parameterString^$exponent"
+    override fun toString() = "$parameterString^${exponent.toStringAsComponent()}"
     override fun toTex(): TeX =
         when (exponent) {
             Constant(.5)  -> "\\sqrt{${member.toTex()}}"
@@ -140,23 +140,27 @@ class Exponential private constructor(
         this === other || other is Exponential && base == other.base && member == other.member
 
     override fun hashCode() = base.hashCode() xor member.hashCode()
-    override fun toString() = "$base^$parameterString"
+    override fun toString() = "${base.toStringAsComponent()}^$parameterString"
     override fun toTex(): TeX = "{${base.toTex()}}^{${member.toTex()}}"
 
     companion object Builder {
+        operator fun get(e: Expression) =
+            get(Constant.e, e)
+
         operator fun get(b: Constant, e: Expression): Expression =
-            when {
-                b.re < 0 -> throw IllegalArgumentException()
-                b == `0` -> `0`
-                b == `1` -> `1`
-                else     -> when (e) {
+            when (b) {
+                `0`  -> `0`
+                `1`  -> `1`
+                else -> when (e) {
                     is Constant              -> b pow e
-                    is Product               -> Exponential(b pow e.times, e.resetTimes(`1`))
+                    is Product               ->
+                        when (val core = e.resetTimes(`1`)) {
+                            is Product -> Exponential(b pow e.times, core)
+                            else       -> get(b pow e.times, core)
+                        }
                     is ExponentialExpression -> Exponential(b, e)
                     is Ln                    -> Power[e.member, ln(b)]
-                    is Sum                   -> Product[e.products.map {
-                        get(b, it)
-                    }] * (b pow e.tail)
+                    is Sum                   -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
                     else                     -> throw UnsupportedOperationException()
                 }
             }
