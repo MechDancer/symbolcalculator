@@ -14,17 +14,17 @@ sealed class Calculation : FunctionExpression {
     protected abstract fun format(which: (Expression) -> String): String
 
     final override fun times(c: Constant) =
-        when (c) {
-            zero, -zero -> zero
-            one         -> this
-            else        -> timesWithoutCheck(c)
+        when {
+            c.isZero() -> zero
+            c == one   -> this
+            else       -> timesWithoutCheck(c)
         }
 
     final override fun div(c: Constant) =
-        when (c) {
-            zero, -zero -> Constant.NaN
-            one         -> this
-            else        -> divWithoutCheck(c)
+        when {
+            c.isZero() -> Constant.NaN
+            c == one   -> this
+            else       -> divWithoutCheck(c)
         }
 
     final override fun toString() = format(Expression::toString)
@@ -122,9 +122,8 @@ class Sum private constructor(
                     else                -> throw UnsupportedOperationException()
                 }
 
-            return when (e) {
-                zero, -zero          -> Unit
-                is Constant          -> merge(one, e.re)
+            when (e) {
+                is Constant          -> if (!e.isZero()) merge(one, e.re)
                 is ProductExpression -> inner(e) // {var, product = {factor = d_, {pow, exp, ln}, product}}
                 is Sum               -> {
                     for (p in e.products) inner(p)
@@ -202,8 +201,8 @@ class Product private constructor(
                 else -> {
                     val products = mutableListOf(ProductCollector())
                     for (e in list) {
+                        if (e is Constant && e.isZero()) return zero
                         when (e) {
-                            zero, -zero          -> return zero
                             one                  -> Unit
                             is Constant          -> products.removeIf { it *= e; it.isZero() }
                             is ProductExpression -> products.removeIf { it *= e; it.isZero() }

@@ -1,5 +1,8 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.core.Constant
+import kotlin.math.sqrt
+
 fun main() {
     val x by variable
     val y by variable
@@ -41,5 +44,12 @@ fun main() {
         println(f)
         println(f.substitute(x, 2))
         println(f.substitute { this[x] = x * y })
+    }
+    println()
+    run {
+        val f = Constant(1.0, -sqrt(3.0))
+        println(f.toString())
+        println(f.toStringAsComponent())
+        println(f.toStringAsPolar())
     }
 }
