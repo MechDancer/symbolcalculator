@@ -118,17 +118,17 @@ class Sum private constructor(
             fun inner(p: ProductExpression): Unit =
                 when (p) {
                     is FactorExpression -> merge(p, 1.0) // {var, factor = d_, {pow, exp, ln}}
-                    is Product          -> merge(p.resetTimes(one), p.times.value)
+                    is Product          -> merge(p.resetTimes(one), p.times.re)
                     else                -> throw UnsupportedOperationException()
                 }
 
             return when (e) {
                 zero, -zero          -> Unit
-                is Constant          -> merge(one, e.value)
+                is Constant          -> merge(one, e.re)
                 is ProductExpression -> inner(e) // {var, product = {factor = d_, {pow, exp, ln}, product}}
                 is Sum               -> {
                     for (p in e.products) inner(p)
-                    merge(one, e.tail.value)
+                    merge(one, e.tail.re)
                 }
                 else                 -> throw UnsupportedOperationException()
             }
@@ -136,9 +136,9 @@ class Sum private constructor(
 
         private fun <T> List<(T) -> Double>.parallel(tail: Constant) =
             if (size > parallelism)
-                { t: T -> sumParallel { it(t) } + tail.value }
+                { t: T -> sumParallel { it(t) } + tail.re }
             else
-                { t: T -> sumByDouble { it(t) } + tail.value }
+                { t: T -> sumByDouble { it(t) } + tail.re }
     }
 }
 
@@ -212,7 +212,7 @@ class Product private constructor(
                                 products.clear()
                                 for (a in copy) {
                                     products += e.products.mapNotNull { (a * it).takeUnless(ProductCollector::isZero) }
-                                    if (e.tail.value != .0) products += a * e.tail
+                                    if (e.tail.re != .0) products += a * e.tail
                                 }
                             }
                             else                 -> throw UnsupportedOperationException()
@@ -238,20 +238,20 @@ class Product private constructor(
             fun isZero() = tail == .0
 
             operator fun timesAssign(c: Constant) {
-                tail *= c.value
+                tail *= c.re
             }
 
             operator fun timesAssign(e: ProductExpression) {
                 when (e) {
                     is FactorExpression -> inner(e) // {var, d_, factor = {pow, exp, ln}}
-                    is Product          -> if (e.factors.all { inner(it); tail != .0 }) tail *= e.times.value
+                    is Product          -> if (e.factors.all { inner(it); tail != .0 }) tail *= e.times.re
                     else                -> throw UnsupportedOperationException()
                 }
             }
 
             constructor() : this(1.0, emptyMap())
 
-            operator fun times(b: Constant) = ProductCollector(tail * b.value, powers)
+            operator fun times(b: Constant) = ProductCollector(tail * b.re, powers)
             operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
 
             fun build(): Expression {
@@ -304,7 +304,7 @@ class Product private constructor(
                     is BaseExpression -> // {var, exp, ln}
                         powers.merge(e, 1.0)
                     is Power          -> {
-                        powers.merge(e.member, e.exponent.value)
+                        powers.merge(e.member, e.exponent.re)
                         (e.member as? Differential)?.let(::check)
                     }
                     else              -> throw UnsupportedOperationException()
@@ -317,11 +317,11 @@ class Product private constructor(
                 { t: T ->
                     parallelStream()
                         .mapToDouble { it(t) }
-                        .reduce(times.value) { product, it -> product * it }
+                        .reduce(times.re) { product, it -> product * it }
                 }
             else
                 { t: T ->
-                    fold(times.value) { product, it -> product * it(t) }
+                    fold(times.re) { product, it -> product * it(t) }
                 }
     }
 }

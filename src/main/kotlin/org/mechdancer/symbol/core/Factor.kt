@@ -71,16 +71,16 @@ class Power private constructor(
     ExponentialExpression {
     init {
         // 作为导数算子，阶数只能是整数
-        if (member is Differential) require(exponent.value == exponent.value.toInt().toDouble())
+        if (member is Differential) require(exponent.re == exponent.re.toInt().toDouble())
     }
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substituteMember(e: Expression) = get(e, exponent)
     override fun toFunction(v: Variable): (Double) -> Double =
-        member.toFunction(v).let { { n -> it(n).pow(exponent.value) } }
+        member.toFunction(v).let { { n -> it(n).pow(exponent.re) } }
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        member.toFunction(space).let { { v -> it(v).pow(exponent.value) } }
+        member.toFunction(space).let { { v -> it(v).pow(exponent.re) } }
 
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
@@ -131,10 +131,10 @@ class Exponential private constructor(
     override fun substituteMember(e: Expression) = get(base, e)
 
     override fun toFunction(v: Variable): (Double) -> Double =
-        member.toFunction(v).let { { n -> base.value.pow(it(n)) } }
+        member.toFunction(v).let { { n -> base.re.pow(it(n)) } }
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        member.toFunction(space).let { { v -> base.value.pow(it(v)) } }
+        member.toFunction(space).let { { v -> base.re.pow(it(v)) } }
 
     override fun equals(other: Any?) =
         this === other || other is Exponential && base == other.base && member == other.member
@@ -200,7 +200,7 @@ class Ln private constructor(
                     val groups = e.factors.groupBy { it is Exponential }
                     val exps = groups[true]?.map { it as Exponential; get(it.member) * ln(it.base) } ?: emptyList()
                     val others = groups[false] ?: emptyList()
-                    val sign = Constant(e.times.value.sign)
+                    val sign = Constant(e.times.re.sign)
                     Sum[Ln((Product[others] * sign) as LnExpression), Sum[exps], ln(e.times / sign)]
                 }
                 is Sum              -> Ln(e)

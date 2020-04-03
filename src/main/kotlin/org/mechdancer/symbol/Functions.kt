@@ -47,7 +47,7 @@ infix fun Expression.pow(others: Expression) =
         is Constant    -> Exponential[this, others]
         is Exponential -> Exponential[base, Product[member, others]]
         else           -> when (others) {
-            is Constant -> pow(others.value)
+            is Constant -> pow(others.re)
             // 对于幂指函数，取对数幂转化为基本初等函数的复合形式
             else        -> Exponential[Constant(E), Product[others, Ln[this]]]
         }
@@ -90,7 +90,7 @@ fun Array<Expression>.meanSquare() = run { sumBy { it `^` 2 } / (2 * size) }
 
 // 其他
 
-fun Expression.toDouble() = (this as Constant).value
+fun Expression.toDouble() = (this as Constant).re
 
 internal fun <T, U> Collection<T>.mapParallel(block: (T) -> U) =
     parallelStream().map(block).toList()

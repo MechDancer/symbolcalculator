@@ -125,5 +125,5 @@ fun RemoteHub.paintFrame3(
 fun RemoteHub.paint(expressionVector: NamedExpressionVector) {
     for ((v, e) in expressionVector.expressions)
         if (e is Constant)
-            paint(v.toString(), e.value)
+            paint(v.toString(), e.re)
 }
