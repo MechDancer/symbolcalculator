@@ -17,8 +17,6 @@ data class Constant(val re: Double, val im: Double = .0)
     /** 共轭 */
     val conjugate get() = Constant(re, -im)
 
-    fun isZero() = re == .0 && im == .0
-
     override fun d() = `0`
     override fun substitute(from: Expression, to: Expression) = if (this == from) to else this
     override fun substitute(map: Map<out FunctionExpression, Expression>) = this

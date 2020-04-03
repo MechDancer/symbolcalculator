@@ -146,7 +146,7 @@ class Exponential private constructor(
     companion object Builder {
         operator fun get(b: Constant, e: Expression): Expression =
             when {
-                b < `0`  -> throw IllegalArgumentException()
+                b.re < 0 -> throw IllegalArgumentException()
                 b == `0` -> `0`
                 b == `1` -> `1`
                 else     -> when (e) {
