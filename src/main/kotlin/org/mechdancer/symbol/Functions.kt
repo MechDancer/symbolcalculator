@@ -4,6 +4,7 @@ package org.mechdancer.symbol
 
 import org.mechdancer.symbol.core.*
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
+import org.mechdancer.symbol.core.Constant.Companion.i
 import kotlin.math.E
 import kotlin.streams.toList
 
@@ -47,9 +48,9 @@ infix fun Expression.pow(others: Expression) =
         is Constant    -> Exponential[this, others]
         is Exponential -> Exponential[base, Product[member, others]]
         else           -> when (others) {
-            is Constant -> pow(others.value)
+            is Constant -> pow(others.re)
             // 对于幂指函数，取对数幂转化为基本初等函数的复合形式
-            else        -> Exponential[Constant(E), Product[others, Ln[this]]]
+            else        -> Exponential[Product[others, Ln[this]]]
         }
     }
 
@@ -60,6 +61,10 @@ infix fun Number.`^`(e: Expression) = pow(e)
 fun ln(e: Expression) = Ln[e]
 fun log(base: Constant) = { e: Expression -> Ln[base, e] }
 fun log(base: Number) = log(Constant(base.toDouble()))
+
+fun sin(theta: Expression) = Sum[Exponential[theta * i] - Exponential[theta * -i]] / (2 * i)
+fun cos(theta: Expression) = Sum[Exponential[theta * i] + Exponential[theta * -i]] / 2
+fun tan(theta: Expression) = sin(theta) / cos(theta)
 
 // 求和求积
 
@@ -90,7 +95,7 @@ fun Array<Expression>.meanSquare() = run { sumBy { it `^` 2 } / (2 * size) }
 
 // 其他
 
-fun Expression.toDouble() = (this as Constant).value
+fun Expression.toDouble() = (this as Constant).re
 
 internal fun <T, U> Collection<T>.mapParallel(block: (T) -> U) =
     parallelStream().map(block).toList()

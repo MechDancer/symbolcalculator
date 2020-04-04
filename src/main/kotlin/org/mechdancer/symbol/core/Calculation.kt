@@ -1,8 +1,8 @@
 package org.mechdancer.symbol.core
 
 import org.mechdancer.symbol.core.Constant.Companion.`-1`
-import org.mechdancer.symbol.core.Constant.Companion.one
-import org.mechdancer.symbol.core.Constant.Companion.zero
+import org.mechdancer.symbol.core.Constant.Companion.`1`
+import org.mechdancer.symbol.core.Constant.Companion.`0`
 import org.mechdancer.symbol.mapParallel
 import org.mechdancer.symbol.sumParallel
 import kotlin.math.sign
@@ -15,16 +15,16 @@ sealed class Calculation : FunctionExpression {
 
     final override fun times(c: Constant) =
         when (c) {
-            zero, -zero -> zero
-            one         -> this
-            else        -> timesWithoutCheck(c)
+            `0`  -> `0`
+            `1`  -> this
+            else -> timesWithoutCheck(c)
         }
 
     final override fun div(c: Constant) =
         when (c) {
-            zero, -zero -> Constant.NaN
-            one         -> this
-            else        -> divWithoutCheck(c)
+            `0`  -> Constant.NaN
+            `1`  -> this
+            else -> divWithoutCheck(c)
         }
 
     final override fun toString() = format(Expression::toString)
@@ -32,11 +32,11 @@ sealed class Calculation : FunctionExpression {
 }
 
 // 和式合并器，不支持非顶层的 typealias，只能放在这里
-private typealias SumCollector = HashMap<Expression, Double>
+private typealias SumCollector = HashMap<Expression, Constant>
 
 // 合并算法，同类项系数相加或同底幂函数指数相加
-private fun <T : Expression> HashMap<T, Double>.merge(e: T, b: Double) {
-    compute(e) { _, a -> ((a ?: .0) + b).takeIf { it != .0 } }
+private fun <T : Expression> HashMap<T, Constant>.merge(e: T, b: Constant) {
+    compute(e) { _, a -> (a?.plus(b) ?: b).takeIf { it != `0` } }
 }
 
 /** 和式 */
@@ -73,13 +73,13 @@ class Sum private constructor(
         buildString {
             append(which(products.first()))
             for (item in products.asSequence().drop(1))
-                if (item is Product && item.times < zero)
-                    append(" - ${which(item.resetTimes(-item.times))}")
-                else
-                    append(" + ${which(item)}")
+                when (item) {
+                    is Product -> append(item.toStringAsComponent())
+                    else       -> append(" + ${which(item)}")
+                }
             when {
-                tail > zero -> append(" + ${which(tail)}")
-                tail < zero -> append(" - ${which(-tail)}")
+                tail > `0` -> append(" + ${which(tail)}")
+                tail < `0` -> append(" - ${which(-tail)}")
             }
         }
 
@@ -93,23 +93,23 @@ class Sum private constructor(
 
         operator fun get(list: Collection<Expression>) =
             when (list.size) {
-                0    -> zero
+                0    -> `0`
                 1    -> list.first()
                 else -> {
                     // 合并同类项
-                    val collector = hashMapOf<Expression, Double>()
+                    val collector = hashMapOf<Expression, Constant>()
                     for (e in list) collector += e
                     // 所谓常数就是 1 的倍数
-                    val tail = collector.remove(one) ?: .0
+                    val tail = collector.remove(`1`) ?: `0`
                     // 积式与常数相乘必然还是积式
                     val products = collector
                         .asSequence()
-                        .map { (e, k) -> Product[e, Constant(k)] as ProductExpression }
+                        .map { (e, k) -> Product[e, k] as ProductExpression }
                         .toSet()
                     when {
-                        products.isEmpty()               -> Constant(tail)
-                        tail == .0 && products.size == 1 -> products.first()
-                        else                             -> Sum(products, Constant(tail))
+                        products.isEmpty()                -> tail
+                        tail == `0` && products.size == 1 -> products.first()
+                        else                              -> Sum(products, tail)
                     }
                 }
             }
@@ -117,18 +117,18 @@ class Sum private constructor(
         private operator fun SumCollector.plusAssign(e: Expression) {
             fun inner(p: ProductExpression): Unit =
                 when (p) {
-                    is FactorExpression -> merge(p, 1.0) // {var, factor = d_, {pow, exp, ln}}
-                    is Product          -> merge(p.resetTimes(one), p.times.value)
+                    is FactorExpression -> merge(p, `1`) // {var, factor = d_, {pow, exp, ln}}
+                    is Product          -> merge(p.resetTimes(`1`), p.times)
                     else                -> throw UnsupportedOperationException()
                 }
 
-            return when (e) {
-                zero, -zero          -> Unit
-                is Constant          -> merge(one, e.value)
+            when (e) {
+                `0`                  -> Unit
+                is Constant          -> merge(`1`, e)
                 is ProductExpression -> inner(e) // {var, product = {factor = d_, {pow, exp, ln}, product}}
                 is Sum               -> {
                     for (p in e.products) inner(p)
-                    merge(one, e.tail.value)
+                    merge(`1`, e.tail)
                 }
                 else                 -> throw UnsupportedOperationException()
             }
@@ -136,9 +136,9 @@ class Sum private constructor(
 
         private fun <T> List<(T) -> Double>.parallel(tail: Constant) =
             if (size > parallelism)
-                { t: T -> sumParallel { it(t) } + tail.value }
+                { t: T -> sumParallel { it(t) } + tail.re }
             else
-                { t: T -> sumByDouble { it(t) } + tail.value }
+                { t: T -> sumByDouble { it(t) } + tail.re }
     }
 }
 
@@ -178,7 +178,7 @@ class Product private constructor(
     override fun format(which: (Expression) -> String) =
         buildString {
             when (times) {
-                one  -> Unit
+                `1`  -> Unit
                 `-1` -> append("-")
                 else -> append("${which(times)} ")
             }
@@ -188,9 +188,30 @@ class Product private constructor(
             groups[true]?.let { append(it.joinToString(" ", transform = which)) }
         }
 
-    internal fun resetTimes(new: Constant) = Product(factors, new)
-    override fun timesWithoutCheck(c: Constant) = resetTimes(times * c)
-    override fun divWithoutCheck(c: Constant) = resetTimes(times / c)
+    internal fun toStringAsComponent(): String {
+        val sign = when {
+            times.re > 0 -> '+'
+            times.re < 0 -> '-'
+            times.im > 0 -> '+'
+            times.im < 0 -> '-'
+            else         -> throw RuntimeException()
+        }
+        val k = if (sign == '+') times else -times
+        return buildString {
+            append(" $sign ")
+            if (k != `1`) append("${times.toStringAsComponent()} ")
+            val groups = factors.groupBy(Builder::isDifferential)
+            groups[false]?.let { append(it.joinToString(" ")) }
+            if (groups.size == 2) append(" ")
+            groups[true]?.let { append(it.joinToString(" ")) }
+        }
+    }
+
+    internal fun resetTimes(new: Constant) =
+        if (new == `1` && factors.size == 1) factors.first() else Product(factors, new)
+
+    override fun timesWithoutCheck(c: Constant): Expression = resetTimes(times * c)
+    override fun divWithoutCheck(c: Constant): Expression = resetTimes(times / c)
 
     companion object Builder {
         operator fun get(vararg e: Expression) = get(e.asList())
@@ -203,8 +224,8 @@ class Product private constructor(
                     val products = mutableListOf(ProductCollector())
                     for (e in list) {
                         when (e) {
-                            zero, -zero          -> return zero
-                            one                  -> Unit
+                            `0`                  -> return `0`
+                            `1`                  -> Unit
                             is Constant          -> products.removeIf { it *= e; it.isZero() }
                             is ProductExpression -> products.removeIf { it *= e; it.isZero() }
                             is Sum               -> {
@@ -212,12 +233,12 @@ class Product private constructor(
                                 products.clear()
                                 for (a in copy) {
                                     products += e.products.mapNotNull { (a * it).takeUnless(ProductCollector::isZero) }
-                                    if (e.tail.value != .0) products += a * e.tail
+                                    if (e.tail.re != .0) products += a * e.tail
                                 }
                             }
                             else                 -> throw UnsupportedOperationException()
                         }
-                        if (products.isEmpty()) return zero
+                        if (products.isEmpty()) return `0`
                     }
                     Sum[products.map { it.build() }]
                 }
@@ -229,48 +250,45 @@ class Product private constructor(
             p is Differential || p is Power && p.member is Differential
 
         private class ProductCollector private constructor(
-            private var tail: Double,
-            powers: Map<BaseExpression, Double>
+            private var tail: Constant,
+            powers: Map<BaseExpression, Constant>
         ) {
             private val powers = HashMap(powers)
             private val differentials = powers.keys.filterIsInstance<Differential>().toHashSet()
 
-            fun isZero() = tail == .0
+            fun isZero() = tail == `0`
 
             operator fun timesAssign(c: Constant) {
-                tail *= c.value
+                tail *= c
             }
 
             operator fun timesAssign(e: ProductExpression) {
                 when (e) {
                     is FactorExpression -> inner(e) // {var, d_, factor = {pow, exp, ln}}
-                    is Product          -> if (e.factors.all { inner(it); tail != .0 }) tail *= e.times.value
+                    is Product          -> if (e.factors.all { inner(it); tail != `0` }) tail *= e.times
                     else                -> throw UnsupportedOperationException()
                 }
             }
 
-            constructor() : this(1.0, emptyMap())
+            constructor() : this(`1`, emptyMap())
 
-            operator fun times(b: Constant) = ProductCollector(tail * b.value, powers)
+            operator fun times(b: Constant) = ProductCollector(tail * b, powers)
             operator fun times(b: ProductExpression) = ProductCollector(tail, powers).also { it *= b }
 
             fun build(): Expression {
                 // if (tail == .0) return zero // 实际上不必做这个检查，若系数为 0，外部将直接消去
-                val products = powers.map { (e, k) -> Power[e, Constant(k)] }
+                val products = powers.map { (e, k) -> Power[e, k] }
                 return when {
-                    products.isEmpty()                -> Constant(tail)
-                    tail == 1.0 && products.size == 1 -> products.first()
+                    products.isEmpty()                -> tail
+                    tail == `1` && products.size == 1 -> products.first()
                     else                              -> {
                         val groups = products.groupBy { it is FactorExpression }
                         val product = groups[true]?.let { factors ->
-                            if (tail == 1.0 && factors.size == 1)
+                            if (tail == `1` && factors.size == 1)
                                 factors.first()
                             else
-                                Product(factors
-                                            .map { it as FactorExpression }
-                                            .toSet(),
-                                        Constant(tail))
-                        } ?: Constant(tail)
+                                Product(factors.map { it as FactorExpression }.toSet(), tail)
+                        } ?: tail
                         groups[false]?.let { Product[Product[it], product] } ?: product
                     }
                 }
@@ -280,17 +298,17 @@ class Product private constructor(
             // 参数 [dv] 是此次迭代改变指数的微元
             private fun check(dv: Differential) {
                 // 检查微元的符号
-                val nn = powers[dv]?.sign
+                val nn = powers[dv]?.re?.sign
                 when {
                     // 微元已经消去，则离开相关微元集
                     nn == null
                     -> differentials -= dv
                     // 如果所有其他微元同号，新微元加入相关微元集
-                    differentials.all { powers[it]?.sign == nn }
+                    differentials.all { powers[it]?.re?.sign == nn }
                     -> differentials += dv
                     // 否则因子直接置 0，将在外部循环中消去
                     else
-                    -> tail = .0
+                    -> tail = `0`
                 }
             }
 
@@ -298,13 +316,13 @@ class Product private constructor(
             private fun inner(e: FactorExpression) {
                 when (e) {
                     is Differential   -> {
-                        powers.merge(e, 1.0)
+                        powers.merge(e, `1`)
                         check(e)
                     }
                     is BaseExpression -> // {var, exp, ln}
-                        powers.merge(e, 1.0)
+                        powers.merge(e, `1`)
                     is Power          -> {
-                        powers.merge(e.member, e.exponent.value)
+                        powers.merge(e.member, e.exponent)
                         (e.member as? Differential)?.let(::check)
                     }
                     else              -> throw UnsupportedOperationException()
@@ -317,11 +335,11 @@ class Product private constructor(
                 { t: T ->
                     parallelStream()
                         .mapToDouble { it(t) }
-                        .reduce(times.value) { product, it -> product * it }
+                        .reduce(times.re) { product, it -> product * it }
                 }
             else
                 { t: T ->
-                    fold(times.value) { product, it -> product * it(t) }
+                    fold(times.re) { product, it -> product * it(t) }
                 }
     }
 }

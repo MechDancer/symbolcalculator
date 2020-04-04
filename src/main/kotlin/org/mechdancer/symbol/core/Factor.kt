@@ -71,22 +71,22 @@ class Power private constructor(
     ExponentialExpression {
     init {
         // 作为导数算子，阶数只能是整数
-        if (member is Differential) require(exponent.value == exponent.value.toInt().toDouble())
+        if (member is Differential) require(exponent.re == exponent.re.toInt().toDouble())
     }
 
     override val df by lazy { get(member, exponent - `1`) * exponent }
     override fun substituteMember(e: Expression) = get(e, exponent)
     override fun toFunction(v: Variable): (Double) -> Double =
-        member.toFunction(v).let { { n -> it(n).pow(exponent.value) } }
+        member.toFunction(v).let { { n -> it(n).pow(exponent.re) } }
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        member.toFunction(space).let { { v -> it(v).pow(exponent.value) } }
+        member.toFunction(space).let { { v -> it(v).pow(exponent.re) } }
 
     override fun equals(other: Any?) =
         this === other || other is Power && exponent == other.exponent && member == other.member
 
     override fun hashCode() = member.hashCode() xor exponent.hashCode()
-    override fun toString() = "$parameterString^$exponent"
+    override fun toString() = "$parameterString^${exponent.toStringAsComponent()}"
     override fun toTex(): TeX =
         when (exponent) {
             Constant(.5)  -> "\\sqrt{${member.toTex()}}"
@@ -131,32 +131,36 @@ class Exponential private constructor(
     override fun substituteMember(e: Expression) = get(base, e)
 
     override fun toFunction(v: Variable): (Double) -> Double =
-        member.toFunction(v).let { { n -> base.value.pow(it(n)) } }
+        member.toFunction(v).let { { n -> base.re.pow(it(n)) } }
 
     override fun toFunction(space: VariableSpace): (Vector) -> Double =
-        member.toFunction(space).let { { v -> base.value.pow(it(v)) } }
+        member.toFunction(space).let { { v -> base.re.pow(it(v)) } }
 
     override fun equals(other: Any?) =
         this === other || other is Exponential && base == other.base && member == other.member
 
     override fun hashCode() = base.hashCode() xor member.hashCode()
-    override fun toString() = "$base^$parameterString"
+    override fun toString() = "${base.toStringAsComponent()}^$parameterString"
     override fun toTex(): TeX = "{${base.toTex()}}^{${member.toTex()}}"
 
     companion object Builder {
+        operator fun get(e: Expression) =
+            get(Constant.e, e)
+
         operator fun get(b: Constant, e: Expression): Expression =
-            when {
-                b < `0`  -> throw IllegalArgumentException()
-                b == `0` -> `0`
-                b == `1` -> `1`
-                else     -> when (e) {
+            when (b) {
+                `0`  -> `0`
+                `1`  -> `1`
+                else -> when (e) {
                     is Constant              -> b pow e
-                    is Product               -> Exponential(b pow e.times, e.resetTimes(`1`))
+                    is Product               ->
+                        when (val core = e.resetTimes(`1`)) {
+                            is Product -> Exponential(b pow e.times, core)
+                            else       -> get(b pow e.times, core)
+                        }
                     is ExponentialExpression -> Exponential(b, e)
                     is Ln                    -> Power[e.member, ln(b)]
-                    is Sum                   -> Product[e.products.map {
-                        get(b, it)
-                    }] * (b pow e.tail)
+                    is Sum                   -> Product[e.products.map { get(b, it) }] * (b pow e.tail)
                     else                     -> throw UnsupportedOperationException()
                 }
             }
@@ -200,7 +204,7 @@ class Ln private constructor(
                     val groups = e.factors.groupBy { it is Exponential }
                     val exps = groups[true]?.map { it as Exponential; get(it.member) * ln(it.base) } ?: emptyList()
                     val others = groups[false] ?: emptyList()
-                    val sign = Constant(e.times.value.sign)
+                    val sign = Constant(e.times.re.sign)
                     Sum[Ln((Product[others] * sign) as LnExpression), Sum[exps], ln(e.times / sign)]
                 }
                 is Sum              -> Ln(e)

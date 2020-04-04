@@ -12,9 +12,9 @@ import org.mechdancer.symbol.plus
 data class Domain(val v: Variable, val min: Constant, val max: Constant) {
     private val function by lazy {
         when {
-            min.value.isInfinite() -> e `^` v - max
-            max.value.isInfinite() -> e `^` min - v
-            else                   -> (e `^` min - v) + (e `^` v - max)
+            min.re.isInfinite() -> e `^` v - max
+            max.re.isInfinite() -> e `^` min - v
+            else                -> (e `^` min - v) + (e `^` v - max)
         }
     }
 

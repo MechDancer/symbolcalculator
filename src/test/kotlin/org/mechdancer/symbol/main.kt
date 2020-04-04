@@ -1,5 +1,12 @@
 package org.mechdancer.symbol
 
+import org.mechdancer.symbol.core.Constant
+import org.mechdancer.symbol.core.Constant.Companion.e
+import org.mechdancer.symbol.core.Constant.Companion.i
+import org.mechdancer.symbol.core.Constant.Companion.π
+import org.mechdancer.symbol.core.Variable
+import kotlin.math.sqrt
+
 fun main() {
     val x by variable
     val y by variable
@@ -41,5 +48,25 @@ fun main() {
         println(f)
         println(f.substitute(x, 2))
         println(f.substitute { this[x] = x * y })
+    }
+    println()
+    run {
+        val f = Constant(1.0, -sqrt(3.0))
+        println(f.toString())
+        println(f.toStringAsComponent())
+        println(f.toStringAsPolar())
+    }
+    println()
+    run {
+        val theta by variable
+        println(e `^` i * π * theta)
+
+        val f = tan(π * theta)
+        println(f)
+        println(f.substitute(theta, 1.0 / 4))
+
+        val df = d(f) / d(theta)
+        println(df)
+        println(df.substitute(theta, 1.0 / 4))
     }
 }
