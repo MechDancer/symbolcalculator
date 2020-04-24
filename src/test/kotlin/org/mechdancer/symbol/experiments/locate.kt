@@ -51,7 +51,7 @@ private val beacons =
 private val engine = java.util.Random()
 private fun gaussian(sigma: Double) = sigma * engine.nextGaussian()
 
-private fun measure(d: Double) = d * (1 + gaussian(1e-3)) + gaussian(5e-3)
+private fun measure(d: Double) = d * .95 + gaussian(5e-3)
 private fun deploy(p: Vector3D) = p + vector3D(gaussian(.04), gaussian(.04), gaussian(.04))
 
 fun main() {

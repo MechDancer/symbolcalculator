@@ -149,6 +149,12 @@ class SimulationWorld internal constructor(
                 }
             }.toMap()
 
+        @JvmStatic
+        fun main(args: Array<String>) {
+            println(soundVelocity(15.0) / soundVelocity(20.0))
+            println(soundVelocity(15.0) / soundVelocity(10.0))
+        }
+
 //        @JvmStatic
 //        private fun main(args: Array<String>) {
 //            val remote = remoteHub("定位优化").apply {
