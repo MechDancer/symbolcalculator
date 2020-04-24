@@ -31,6 +31,10 @@ class ConditionCollector {
         if (e is FunctionExpression) equations += e
     }
 
+    operator fun plusAssign(d: Domain) {
+        domains += d
+    }
+
     operator fun set(v: Variable, init: Double) =
         initValues.set(v, Constant(init))
 

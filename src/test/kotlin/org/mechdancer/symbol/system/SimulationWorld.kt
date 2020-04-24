@@ -1,14 +1,8 @@
 package org.mechdancer.symbol.system
 
-import org.mechdancer.algebra.function.matrix.cofactorOf
-import org.mechdancer.algebra.function.matrix.inverse
-import org.mechdancer.algebra.function.matrix.svd
-import org.mechdancer.algebra.function.matrix.times
 import org.mechdancer.algebra.function.vector.*
-import org.mechdancer.algebra.implement.matrix.builder.foldToColumns
 import org.mechdancer.algebra.implement.vector.Vector3D
 import org.mechdancer.algebra.implement.vector.to3D
-import org.mechdancer.algebra.implement.vector.toListVector
 import org.mechdancer.geometry.transformation.toTransformationWithSVD
 import org.mechdancer.symbol.*
 import org.mechdancer.symbol.optimize.dampingNewton
@@ -16,31 +10,59 @@ import org.mechdancer.symbol.optimize.optimize
 import java.util.*
 import kotlin.collections.component1
 import kotlin.collections.component2
-import kotlin.math.abs
+import kotlin.math.sign
 import kotlin.math.sqrt
 
-/** 测距仿真 */
+/**
+ * 测距仿真
+ *
+ * @param layout 固定标签部署结构
+ * @param temperature 气温
+ * @param thermometer 温度计
+ * @param maxMeasureTime 最大测量时间
+ * @param sigmaMeasure 测距误差标准差
+ */
 class SimulationWorld internal constructor(
-    val layout: Map<Beacon, Vector3D>,
+    private val layout: Map<Beacon, Vector3D>,
     var temperature: Double,
-    actualTemperature: Double,
+    private val thermometer: (Double) -> Double,
     private val maxMeasureTime: Long,
     private val sigmaMeasure: Double
 ) {
-    var actualTemperature = actualTemperature
-        set(value) {
-            if (value == field) return
-            field = value
-            edges = layout.toList().buildEdges(value, maxMeasureTime)
+    // 缓存固定标签之间测距
+    private var edges =
+        mapOf<Pair<Beacon, Beacon>, Double>()
+
+    /** 预测量（固定标签之间测距） */
+    fun preMeasures(): Map<Pair<Position, Position>, Double> {
+        // 更新固定标签之间声波飞行时间
+        edges = layout.toList().buildEdges(temperature, maxMeasureTime)
+
+        val c0 = soundVelocity(thermometer(temperature))
+        return edges.entries.associate { (pair, t) ->
+            val (a, b) = pair
+            a.static() to b.static() to t * c0 + gaussian(sigmaMeasure)
+        }
+    }
+
+    /** 位于 [p] 处的移动标签 [mobile] 发起一次测量 */
+    fun measure(mobile: Position, p: Vector3D) =
+        sequence {
+            val c0 = soundVelocity(thermometer(temperature))
+            val ca = soundVelocity(temperature)
+            for ((beacon, p0) in layout.entries.map { (b, p) -> b.static() to p }) {
+                val t = (p euclid p0) / ca
+                if (t < maxMeasureTime / 1000.0)
+                    yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
+            }
         }
 
-    private var edges =
-        layout.toList().buildEdges(actualTemperature, maxMeasureTime)
-
+    /** 固定标签结构（用于画图） */
     fun grid() = edges.keys.map { (a, b) ->
         listOf(layout.getValue(a), layout.getValue(b))
     }
 
+    /** 将一些标签计算位置覆盖到固定标签结构 */
     fun grid(map: Map<Beacon, Vector3D>) =
         sequence {
             val groups = map.keys.groupBy { it in layout }
@@ -55,57 +77,26 @@ class SimulationWorld internal constructor(
             }
         }.toList()
 
-    fun preMeasures(): Map<Pair<Position, Position>, Double> {
-        val c0 = soundVelocity(temperature)
-        return edges
-            .map { (pair, t) ->
-                val (a, b) = pair
-                a.static() to b.static() to t * c0 + gaussian(sigmaMeasure)
-            }
-            .toMap()
-    }
-
-    fun measure(mobile: Position, p: Vector3D) =
-        sequence {
-            val c0 = soundVelocity(temperature)
-            val ca = soundVelocity(actualTemperature)
-            for ((beacon, p0) in layout.entries.map { (b, p) -> b.static() to p }) {
-                val t = (p euclid p0) / ca
-                if (t < maxMeasureTime / 1000.0)
-                    yield(beacon to mobile to t * c0 + gaussian(sigmaMeasure))
-            }
-        }
-
-    fun transform(map: Map<Beacon, Vector3D>): Map<Beacon, Vector3D> {
-        val pairs = map.mapNotNull { (key, p) -> layout[key]?.to(p) }.toMutableList()
-        val tf = pairs.toTransformationWithSVD(1e-8).run {
-            val (_, w, _) = matrix.cofactorOf(3, 3).svd()
-            List(dim) { i -> w[i, i] }
-                .map { if (abs(abs(it) - 1) < .1) .0 else 1.0 }
-                .takeIf { list -> list.any { it != .0 } }
-                ?.toListVector()
-                ?.let {
-                    val (a, b, c) = pairs
-                    val (a1, a0) = a
-                    val (b1, b0) = b
-                    val (c1, c0) = c
-                    val new = baseMatrixOf(b1 - a1, c1 - a1) * (baseMatrixOf(b0 - a0, c0 - a0).inverse() * it)
-                    pairs += (new + a1).to3D() to (it + a0).to3D()
-                    pairs.toTransformationWithSVD(1e-8)
-                }
-            ?: this
-        }
+    fun transform(
+        map: Map<Beacon, Vector3D>,
+        actual: Map<Beacon, Vector3D>
+    ): Map<Beacon, Vector3D> {
+        val pairs0 = map.mapNotNull { (b, p) -> layout[b]?.to(p) }
+        val pairs1 = map.mapNotNull { (b, p) -> actual[b]?.to(p) }
+        val det = (pairs0 + pairs1).toTransformationWithSVD(1e-8).matrix.det!!
+        val (a, b, c) = pairs0
+        val (a1, a0) = a
+        val (b1, b0) = b
+        val (c1, c0) = c
+        val d0 = (b0 - a0 cross c0 - a0) + a0
+        val d1 = (b1 - a1 cross c1 - a1) * det.sign + a1
+        val tf = (pairs0 + (d1 to d0)).toTransformationWithSVD(1e-8)
         return map.mapValues { (_, p) -> (tf * p).to3D() }
     }
 
     companion object {
         private val random = Random()
-
         private fun gaussian(sigma: Double = 1.0) = random.nextGaussian() * sigma
-
-        // 从空间中2个不共线的向量构造空间的一个基向量矩阵
-        private fun baseMatrixOf(x: Vector3D, y: Vector3D) =
-            (x.toList() + y.toList() + (x cross y).toList()).foldToColumns(3)
 
         /** [t]℃ 时的声速 */
         fun soundVelocity(t: Double) = 20.048 * sqrt(t + 273.15)
